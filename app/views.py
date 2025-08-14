@@ -1,112 +1,360 @@
-# app/views.py
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
-from django.shortcuts import get_object_or_404
-from django.utils.dateparse import parse_date
-from datetime import datetime
-from django.db import IntegrityError, transaction
+from rest_framework import status, permissions, generics, filters
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.authtoken.models import Token   # ✅ Added for token auth
+from django.contrib.auth import authenticate        # ✅ Added for login
+from .models import User, Appointment, Document, Doctor, Patient,VisitNote,Profile
+from .serializers import AppointmentSerializer, DoctorSerializer, DocumentSerializer, UserSerializer
+from datetime import datetime, time, timedelta
+from groq import Groq
+from .prompts import PATIENT_SYSTEM, DOCTOR_SYSTEM, HISTORY_SUMMARY_INSTRUCTION
 
-from .models import Doctor, Patient, Appointment
-from .serializers import AppointmentSerializer
-from .utils import generate_daily_slots, get_available_slots
+# -----------------------------
+# Permissions
+# -----------------------------
+class IsDoctor(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.profile.role == "doctor"
 
-class AvailableSlotsView(APIView):
-    """
-    GET /api/slots/?doctor_id=1&date=YYYY-MM-DD
-    """
+class IsPatient(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.profile.role == "patient"
+
+# -----------------------------
+# Pagination
+# -----------------------------
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+    
+# ---------------------------
+# AUTHENTICATION
+# ---------------------------
+class SignupView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        email = request.data.get("email")
+        role = request.data.get("role")  # "doctor" or "patient"
+
+        if role not in ["doctor", "patient"]:
+            return Response({"error": "Role must be 'doctor' or 'patient'."}, status=400)
+
+        # Create user
+        user = User.objects.create_user(username=username, password=password, email=email)
+
+        # Create profile
+        profile = Profile.objects.create(user=user, role=role)
+
+        # Create doctor or patient record
+        if role == "doctor":
+            Doctor.objects.create(profile=profile, specialization=request.data.get("specialization", "General"))
+        else:
+            Patient.objects.create(profile=profile)
+
+        # Create token for authentication
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response({
+            "message": "User registered successfully",
+            "token": token.key,
+            "role": role
+        }, status=201)
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        user = authenticate(username=username, password=password)
+        if user:
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({
+                "token": token.key,
+                "role": user.profile.role
+            })
+        return Response({"error": "Invalid credentials"}, status=400)
+
+
+# ---------------------------
+# DASHBOARDS
+# ---------------------------
+class DoctorDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        doctor_id = request.query_params.get("doctor_id")
-        date_str = request.query_params.get("date")
+        if request.user.profile.role != "doctor":
+            return Response({"error": "Only doctors can access this"}, status=403)
+        appointments = Appointment.objects.filter(
+            doctor=request.user
+        ).order_by("-date", "-slot")
+        serializer = AppointmentSerializer(appointments, many=True)
+        return Response(serializer.data)
 
-        if not doctor_id or not date_str:
-            return Response(
-                {"detail": "doctor_id and date are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
-        date = parse_date(date_str)
-        if date is None:
-            return Response(
-                {"detail": "Invalid date format. Use YYYY-MM-DD."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+class PatientDashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-        doctor = get_object_or_404(Doctor, pk=doctor_id, available=True)
-        slots = get_available_slots(doctor.id, date)
-        return Response(
-            {"date": date_str, "doctor_id": doctor.id, "available_slots": slots}
-        )
+    def get(self, request):
+        if request.user.profile.role != "patient":
+            return Response({"error": "Only patients can access this"}, status=403)
+        appointments = Appointment.objects.filter(
+            patient=request.user
+        ).order_by("-date", "-slot")
+        serializer = AppointmentSerializer(appointments, many=True)
+        return Response(serializer.data)
 
-class BookAppointmentView(APIView):
-    """
-    POST /api/book/
-    {
-        "doctor_id": 1,
-        "date": "YYYY-MM-DD",
-        "slot": "HH:MM"
-    }
-    """
+
+# ---------------------------
+# CRUD for DOCTORS / PATIENTS
+# ---------------------------
+class UserListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        role = request.query_params.get("role")
+        if role:
+            queryset = User.objects.filter(profile__role=role)
+        else:
+            queryset = User.objects.all()
+        serializer = UserSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class UserDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        user.delete()
+        return Response(status=204)
+
+
+# ---------------------------
+# DOCTOR SEARCH
+# ---------------------------
+class DoctorListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        specialization = request.query_params.get("specialization")
+        available = request.query_params.get("available")
+        queryset = Doctor.objects.filter(profile__role="doctor")
+
+        if specialization:
+            queryset = queryset.filter(specialization__icontains=specialization)
+        if available:
+            queryset = queryset.filter(available=available.lower() == "true")
+        serializer = DoctorSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+# ---------------------------
+# DOCUMENT UPLOAD
+# ---------------------------
+class DocumentUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # Ensure user is patient
-        try:
-            patient = request.user.profile.patient
-        except AttributeError:
-            return Response(
-                {"detail": "Only patients can book appointments."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        if request.user.profile.role != "patient":
+            return Response({"error": "Only patients can upload"}, status=403)
+        data = request.data.copy()
+        data["patient"] = request.user.id
+        serializer = DocumentSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-        doctor_id = request.data.get("doctor_id")
+
+# ---------------------------
+# SLOT UTILS
+# ---------------------------
+def generate_daily_slots():
+    slots = []
+    start = time(10, 0)
+    end = time(18, 0)
+    current = datetime.combine(datetime.today(), start)
+    end_dt = datetime.combine(datetime.today(), end)
+    lunch_start = time(13, 0)
+    lunch_end = time(14, 0)
+    while current < end_dt:
+        slot_time = current.time()
+        if not (lunch_start <= slot_time < lunch_end):
+            slots.append(slot_time.strftime("%H:%M"))
+        current += timedelta(minutes=30)
+    return slots
+
+
+def get_booked_slots(doctor, date):
+    appointments = Appointment.objects.filter(doctor=doctor, date=date)
+    return [a.slot.strftime("%H:%M") for a in appointments]
+
+
+def get_available_slots(doctor, date):
+    all_slots = generate_daily_slots()
+    booked = get_booked_slots(doctor, date)
+    return [s for s in all_slots if s not in booked]
+
+
+# ---------------------------
+# APPOINTMENT CRUD (slot check)
+# ---------------------------
+class AvailableSlotsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        doctor_id = request.GET.get("doctor_id")
+        date_str = request.GET.get("date")
+        if not doctor_id or not date_str:
+            return Response({"error": "doctor_id and date required"}, status=400)
+        doctor = get_object_or_404(User, id=doctor_id, profile__role="doctor")
+        try:
+            date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response({"error": "Invalid date"}, status=400)
+        available = get_available_slots(doctor, date)
+        return Response({"available_slots": available})
+
+
+class AppointmentListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        appointments = Appointment.objects.all()
+        serializer = AppointmentSerializer(appointments, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if request.user.profile.role != "patient":
+            return Response({"error": "Only patients can book"}, status=403)
+        doctor_id = request.data.get("doctor")
         date_str = request.data.get("date")
         slot_str = request.data.get("slot")
+        doctor = get_object_or_404(User, id=doctor_id, profile__role="doctor")
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        if slot_str not in get_available_slots(doctor, date):
+            return Response({"error": "Slot not available"}, status=400)
+        data = request.data.copy()
+        data["patient"] = request.user.id
+        serializer = AppointmentSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-        if not all([doctor_id, date_str, slot_str]):
-            return Response(
-                {"detail": "doctor_id, date, and slot are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
-        date = parse_date(date_str)
-        if date is None:
-            return Response(
-                {"detail": "Invalid date format. Use YYYY-MM-DD."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+class AppointmentDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-        # Check doctor
-        doctor = get_object_or_404(Doctor, pk=doctor_id, available=True)
+    def get(self, request, pk):
+        appointment = get_object_or_404(Appointment, pk=pk)
+        serializer = AppointmentSerializer(appointment)
+        return Response(serializer.data)
 
-        # Validate slot
-        generated = generate_daily_slots(date)
-        if slot_str not in generated:
-            return Response(
-                {"detail": "Slot not valid or outside working hours."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    def put(self, request, pk):
+        appointment = get_object_or_404(Appointment, pk=pk)
+        if request.user != appointment.doctor and request.user != appointment.patient:
+            return Response({"error": "Not authorized"}, status=403)
+        # Slot validation if changing date/slot
+        new_slot = request.data.get("slot")
+        new_date = request.data.get("date")
+        if new_slot and new_date:
+            doctor = appointment.doctor
+            date = datetime.strptime(new_date, "%Y-%m-%d").date()
+            if new_slot not in get_available_slots(doctor, date):
+                return Response({"error": "Slot not available"}, status=400)
+        serializer = AppointmentSerializer(appointment, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
 
-        slot_time = datetime.strptime(slot_str, "%H:%M").time()
+    def delete(self, request, pk):
+        appointment = get_object_or_404(Appointment, pk=pk)
+        if request.user != appointment.doctor and request.user != appointment.patient:
+            return Response({"error": "Not authorized"}, status=403)
+        appointment.delete()
+        return Response(status=204)
 
+
+# ---------------------------
+# AI (GROQ)
+# ---------------------------
+_client = Groq(api_key=settings.GROQ_API_KEY)
+
+
+def chat_with_groq(messages, model=None, temperature=0.2):
+    model = model or settings.GROQ_MODEL
+    resp = _client.chat.completions.create(
+        model=model, messages=messages, temperature=temperature
+    )
+    return resp.choices[0].message.content
+
+
+class ChatbotView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        role = request.data.get("role", "").lower()
+        message = request.data.get("message")
+        history = request.data.get("history", [])
+        if role not in ("patient", "doctor") or not message:
+            return Response({"error": "role and message required"}, status=400)
+        system_prompt = PATIENT_SYSTEM if role == "patient" else DOCTOR_SYSTEM
+        messages = [{"role": "system", "content": system_prompt}] + history + [
+            {"role": "user", "content": message}
+        ]
         try:
-            with transaction.atomic():
-                appt = Appointment.objects.create(
-                    patient=patient,
-                    doctor=doctor,
-                    date=date,
-                    slot=slot_time,
-                    status="booked",
-                )
-        except IntegrityError:
-            return Response(
-                {"detail": "Slot already booked."},
-                status=status.HTTP_409_CONFLICT,
-            )
+            answer = chat_with_groq(messages)
+            return Response({"answer": answer})
+        except Exception as e:
+            return Response({"error": str(e)}, status=502)
 
-        return Response(
-            {"status": "success", "appointment": AppointmentSerializer(appt).data},
-            status=status.HTTP_201_CREATED,
-        )
+
+class HistorySummarizerView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.profile.role != "doctor":
+            return Response({"error": "Only doctors can summarize"}, status=403)
+        raw = request.data.get("raw_history", "")
+        if not raw.strip():
+            return Response({"error": "raw_history required"}, status=400)
+        messages = [
+            {"role": "system", "content": DOCTOR_SYSTEM},
+            {"role": "user", "content": f"{HISTORY_SUMMARY_INSTRUCTION}\n\n{raw}"},
+        ]
+        try:
+            summary = chat_with_groq(messages, temperature=0.1)
+            return Response({"summary": summary})
+        except Exception as e:
+            return Response({"error": str(e)}, status=502)
