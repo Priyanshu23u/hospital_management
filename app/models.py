@@ -1,4 +1,3 @@
-# app/models.py
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -54,19 +53,19 @@ class Appointment(models.Model):
     def __str__(self):
         return f"{self.date} {self.slot} - {self.patient} with {self.doctor}"
 
-# Visit notes from doctor
+# Visit notes from doctor (with prescription)
 class VisitNote(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     visit_date = models.DateTimeField(auto_now_add=True)
     notes = models.TextField()
-    prescription = models.TextField()
+    prescription = models.FileField(upload_to='prescriptions/', null=True, blank=True)  # File upload
 
     def __str__(self):
         return f"Note for {self.patient} by {self.doctor} on {self.visit_date}"
 
-# Uploaded medical documents
+# Uploaded medical documents (linked to appointment)
 class Document(models.Model):
     DOC_TYPE_CHOICES = [
         ('lab', 'Lab Report'),
@@ -75,8 +74,9 @@ class Document(models.Model):
         ('other', 'Other'),
     ]
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, null=True, blank=True)  # link to booking
     file = models.FileField(upload_to='documents/')
-    doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES)
+    doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES, default='other')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

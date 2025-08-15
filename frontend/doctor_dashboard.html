@@ -6,8 +6,11 @@
 <title>Doctor Dashboard - Hospital Management</title>
 <style>
   body { font-family: Arial, sans-serif; margin:0; background:#f4f6fb; }
-  header { background:#2f80ed;color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center }
+  header { background:#2f80ed;color:#fff;padding:14px;display:flex;flex-direction:column;align-items:flex-start }
   header h1 { margin:0; font-size:20px; }
+  header .welcome { font-size:16px; margin-top:4px; }
+  header .spec { font-size:14px; margin-top:2px; color:#dbeafe; }
+  .header-actions { position:absolute; right:20px; top:14px; }
   .container{ padding:20px; max-width:1000px; margin:auto }
   .card{ background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:18px }
   table{ width:100%; border-collapse:collapse; font-size:14px }
@@ -32,7 +35,11 @@
 
 <header>
   <h1>Doctor Dashboard</h1>
-  <button class="primary" onclick="logout()">Logout</button>
+  <div class="welcome" id="welcomeMsg"></div>
+  <div class="spec" id="specMsg"></div>
+  <div class="header-actions">
+    <button class="primary" onclick="logout()">Logout</button>
+  </div>
 </header>
 
 <div class="container">
@@ -101,6 +108,14 @@ async function loadDoctorDashboard() {
       headers: { "Authorization": `Token ${token}` }
     });
     const data = await res.json();
+
+    // ✅ NEW — Show welcome + specialization
+    if (data.doctor_name) {
+      document.getElementById("welcomeMsg").textContent = `Welcome Dr. ${data.doctor_name}`;
+    }
+    if (data.specialization) {
+      document.getElementById("specMsg").textContent = `Specialization: ${data.specialization}`;
+    }
 
     const todayT = document.querySelector("#todayTable tbody");
     const upT = document.querySelector("#upcomingTable tbody");

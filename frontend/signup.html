@@ -61,6 +61,9 @@
     .login-link a:hover {
         text-decoration: underline;
     }
+    #specializationContainer {
+        display: none;
+    }
 </style>
 </head>
 <body>
@@ -68,25 +71,56 @@
 <div class="signup-container">
     <h2>Create Account</h2>
     <div class="error" id="errorMsg"></div>
+
     <input type="text" id="username" placeholder="Username" required>
     <input type="email" id="email" placeholder="Email" required>
     <input type="password" id="password" placeholder="Password" required>
-    <select id="role">
+
+    <select id="role" onchange="toggleSpecialization()">
         <option value="patient">Patient</option>
         <option value="doctor">Doctor</option>
     </select>
+
+    <!-- Specialization dropdown for doctors -->
+    <div id="specializationContainer">
+        <select id="specialization">
+            <option value="">Select Specialization</option>
+            <option value="General">General</option>
+            <option value="Cardiology">Cardiology</option>
+            <option value="Dermatology">Dermatology</option>
+            <option value="Orthopedics">Orthopedics</option>
+            <option value="Pediatrics">Pediatrics</option>
+            <option value="Neurology">Neurology</option>
+            <option value="Psychiatry">Psychiatry</option>
+            <option value="Gynecology">Gynecology</option>
+            <option value="Urology">Urology</option>
+            <option value="Oncology">Oncology</option>
+            <option value="Endocrinology">Endocrinology</option>
+            <option value="Gastroenterology">Gastroenterology</option>
+            <option value="Pulmonology">Pulmonology</option>
+        </select>
+    </div>
+
     <button onclick="signup()">Sign Up</button>
+
     <div class="login-link">
         Already have an account? <a href="login.html">Login</a>
     </div>
 </div>
 
 <script>
+function toggleSpecialization() {
+    const role = document.getElementById("role").value;
+    const specializationDiv = document.getElementById("specializationContainer");
+    specializationDiv.style.display = role === "doctor" ? "block" : "none";
+}
+
 async function signup() {
     const username = document.getElementById("username").value.trim();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value.trim();
     const role = document.getElementById("role").value;
+    const specialization = role === "doctor" ? document.getElementById("specialization").value : "";
 
     const errorMsg = document.getElementById("errorMsg");
     errorMsg.textContent = "";
@@ -95,12 +129,21 @@ async function signup() {
         errorMsg.textContent = "All fields are required.";
         return;
     }
+    if (role === "doctor" && !specialization) {
+        errorMsg.textContent = "Please select specialization.";
+        return;
+    }
 
     try {
+        const payload = { username, email, password, role };
+        if (role === "doctor") {
+            payload.specialization = [specialization]; // send as list
+        }
+
         const response = await fetch("http://127.0.0.1:8000/api/signup/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, email, password, role })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
@@ -109,7 +152,7 @@ async function signup() {
             alert("Signup successful! Please login.");
             window.location.href = "login.html";
         } else {
-            errorMsg.textContent = data.detail || "Signup failed!";
+            errorMsg.textContent = data.error || data.detail || "Signup failed!";
         }
     } catch (error) {
         errorMsg.textContent = "Error connecting to server.";

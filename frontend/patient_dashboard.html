@@ -15,7 +15,15 @@
   th{ background:#2f80ed; color:#fff }
   button.primary{ background:#2f80ed;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer }
   button.primary:hover { background:#1f5bb5; }
+  button.primary:disabled { background:#ccc; cursor:not-allowed; }
   input,select,textarea{ width:100%; padding:8px;border:1px solid #d1d5db;border-radius:6px;margin:6px 0; font-size:14px }
+  .error { color: red; margin: 10px 0; }
+  .success { color: green; margin: 10px 0; }
+  /* Modal styles */
+  .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
+  .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: none; width: 400px; border-radius: 10px; }
+  .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+  .close:hover { color: black; }
   /* Chatbot styles */
   #chatbotBtn{position:fixed;bottom:20px;right:20px;background:#2f80ed;color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:24px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:9999}
   #chatWindow{position:fixed;bottom:90px;right:20px;width:320px;height:440px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;z-index:9999}
@@ -36,10 +44,14 @@
 
 <div class="container">
 
+  <h2 id="welcomeMsg"></h2>
+  <div id="errorMsg" class="error" style="display:none;"></div>
+  <div id="successMsg" class="success" style="display:none;"></div>
+
   <div class="card">
     <h2>Upcoming Appointments</h2>
     <table id="upcomingTable">
-      <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Status</th></tr></thead>
+      <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -54,6 +66,10 @@
 
   <div class="card">
     <h2>Book Appointment</h2>
+    
+    <label>Filter by Specialization</label>
+    <select id="specializationFilter"></select>
+
     <label>Select Doctor</label>
     <select id="doctorSelect"></select>
 
@@ -63,16 +79,36 @@
     <label>Available Slots</label>
     <select id="slotSelect"></select>
 
-    <button class="primary" onclick="bookAppointment()">Book</button>
-  </div>
-
-  <div class="card">
-    <h2>Upload Medical Document</h2>
+    <label>Upload Medical Document (optional)</label>
     <input type="file" id="docFile">
-    <button class="primary" onclick="uploadDocument()">Upload</button>
-    <ul id="docList"></ul>
+
+    <button class="primary" id="bookBtn" onclick="bookAppointment()">Book</button>
   </div>
 
+</div>
+
+<!-- Update Appointment Modal -->
+<div id="updateModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Update Appointment</h2>
+    
+    <label>Select New Doctor (optional)</label>
+    <select id="updateDoctorSelect">
+      <option value="">Keep current doctor</option>
+    </select>
+
+    <label>Select New Date</label>
+    <input type="date" id="updateDate">
+
+    <label>Available Slots</label>
+    <select id="updateSlotSelect">
+      <option value="">Select date and doctor first</option>
+    </select>
+
+    <button class="primary" id="updateBtn" onclick="confirmUpdate()">Update Appointment</button>
+    <button class="primary" onclick="closeUpdateModal()" style="background:#666; margin-left:10px;">Cancel</button>
+  </div>
 </div>
 
 <!-- Chatbot UI -->
@@ -87,17 +123,49 @@
 
 <script>
 const token = localStorage.getItem("authToken");
-if (!token) {
-  alert("Please login first.");
-  window.location.href = "login.html";
+if (!token) { 
+  alert("Please login first."); 
+  window.location.href = "login.html"; 
 }
 
+let currentUpdateAppointmentId = null;
+
+// ✅ Utility functions
+function showError(message) {
+  const errorDiv = document.getElementById("errorMsg");
+  errorDiv.textContent = message;
+  errorDiv.style.display = "block";
+  setTimeout(() => errorDiv.style.display = "none", 5000);
+}
+
+function showSuccess(message) {
+  const successDiv = document.getElementById("successMsg");
+  successDiv.textContent = message;
+  successDiv.style.display = "block";
+  setTimeout(() => successDiv.style.display = "none", 3000);
+}
+
+function isURL(str) {
+  try { const u = new URL(str); return u.protocol === "http:" || u.protocol === "https:"; }
+  catch { return false; }
+}
+
+// ✅ Load patient dashboard
 async function loadPatientDashboard() {
   try {
     const res = await fetch("http://127.0.0.1:8000/api/patient/dashboard/", {
       headers: { "Authorization": `Token ${token}` }
     });
+    
+    if (!res.ok) {
+      throw new Error(`Dashboard API returned ${res.status}`);
+    }
+    
     const data = await res.json();
+
+    if (data.patient_name) {
+      document.getElementById("welcomeMsg").textContent = `Welcome ${data.patient_name}`;
+    }
 
     const upT = document.querySelector("#upcomingTable tbody");
     const pastT = document.querySelector("#pastTable tbody");
@@ -106,93 +174,446 @@ async function loadPatientDashboard() {
 
     (data.upcoming || []).forEach(a => {
       upT.innerHTML += `<tr>
-        <td>${a.date}</td><td>${a.time}</td><td>${a.doctor_name}</td><td>${a.status}</td>
+        <td>${a.date}</td>
+        <td>${a.time}</td>
+        <td>${a.doctor_name}</td>
+        <td>${a.status || 'booked'}</td>
+        <td>
+          <button class="primary" onclick="openUpdateModal(${a.id}, '${a.date}', '${a.time}', '${a.doctor_name}')">Update</button>
+          <button class="primary" onclick="cancelAppointment(${a.id})">Cancel</button>
+        </td>
       </tr>`;
     });
 
     (data.past || []).forEach(a => {
+      const presCell = a.prescription
+        ? (isURL(a.prescription)
+            ? `<a href="${a.prescription}" target="_blank">View</a>`
+            : `<span title="Prescription">${a.prescription}</span>`)
+        : "N/A";
       pastT.innerHTML += `<tr>
-        <td>${a.date}</td><td>${a.time}</td><td>${a.doctor_name}</td><td>${a.prescription || "N/A"}</td>
+        <td>${a.date}</td>
+        <td>${a.time}</td>
+        <td>${a.doctor_name}</td>
+        <td>${presCell}</td>
       </tr>`;
     });
 
-    loadDoctors();
-
-  } catch {
-    alert("Failed to load dashboard.");
+    // ✅ Load specializations after dashboard loads
+    await loadSpecializations();
+    
+  } catch (error) {
+    console.error("Dashboard load error:", error);
+    showError("Failed to load dashboard: " + error.message);
   }
 }
 
-async function loadDoctors() {
-  const res = await fetch("http://127.0.0.1:8000/api/doctors/", {
-    headers: { "Authorization": `Token ${token}` }
-  });
-  const data = await res.json();
-  const select = document.getElementById("doctorSelect");
-  select.innerHTML = "";
-  data.forEach(d => {
-    select.innerHTML += `<option value="${d.id}">${d.name} (${d.specialization})</option>`;
-  });
+// ✅ Load specializations
+async function loadSpecializations() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/doctors/specializations/", {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Specializations API returned ${res.status}`);
+    }
+    
+    const specs = await res.json();
+    const filter = document.getElementById("specializationFilter");
+    filter.innerHTML = `<option value="">All Specializations</option>`;
+    
+    if (Array.isArray(specs)) {
+      specs.forEach(s => {
+        filter.innerHTML += `<option value="${s}">${s}</option>`;
+      });
+    }
+    
+    // ✅ Remove old listener and add new one
+    filter.removeEventListener("change", loadDoctors);
+    filter.addEventListener("change", loadDoctors);
+    
+    // ✅ Load initial doctors
+    await loadDoctors();
+    await loadAllDoctorsForUpdate(); // Load doctors for update modal
+    
+  } catch (error) {
+    console.error("Specializations load error:", error);
+    showError("Failed to load specializations: " + error.message);
+    // ✅ Still try to load doctors even if specializations fail
+    await loadDoctors();
+    await loadAllDoctorsForUpdate();
+  }
 }
 
+// ✅ Load doctors
+async function loadDoctors() {
+  try {
+    const specialization = document.getElementById("specializationFilter").value;
+    const url = specialization 
+      ? `http://127.0.0.1:8000/api/doctors/?specialization=${encodeURIComponent(specialization)}`
+      : "http://127.0.0.1:8000/api/doctors/";
+    
+    const res = await fetch(url, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Doctors API returned ${res.status}`);
+    }
+    
+    const data = await res.json();
+    const select = document.getElementById("doctorSelect");
+    select.innerHTML = "<option value=''>Select a doctor</option>";
+    
+    if (Array.isArray(data)) {
+      data.forEach(d => {
+        select.innerHTML += `<option value="${d.id}">${d.username} (${d.specialization})</option>`;
+      });
+    }
+    
+    // ✅ Clear slots and date when doctors change
+    document.getElementById("slotSelect").innerHTML = "<option value=''>Select date first</option>";
+    document.getElementById("apptDate").value = "";
+    
+  } catch (error) {
+    console.error("Doctors load error:", error);
+    showError("Failed to load doctors: " + error.message);
+  }
+}
+
+// ✅ Load all doctors for update modal
+async function loadAllDoctorsForUpdate() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/doctors/", {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) return;
+    
+    const data = await res.json();
+    const select = document.getElementById("updateDoctorSelect");
+    select.innerHTML = "<option value=''>Keep current doctor</option>";
+    
+    if (Array.isArray(data)) {
+      data.forEach(d => {
+        select.innerHTML += `<option value="${d.id}">${d.username} (${d.specialization})</option>`;
+      });
+    }
+    
+  } catch (error) {
+    console.error("Update doctors load error:", error);
+  }
+}
+
+// ✅ Event listeners for slot loading
 document.getElementById("apptDate").addEventListener("change", loadSlots);
 document.getElementById("doctorSelect").addEventListener("change", loadSlots);
 
+// ✅ Event listeners for update modal slot loading
+document.getElementById("updateDate").addEventListener("change", loadUpdateSlots);
+document.getElementById("updateDoctorSelect").addEventListener("change", loadUpdateSlots);
+
+// ✅ Load available slots
 async function loadSlots() {
   const docId = document.getElementById("doctorSelect").value;
   const date = document.getElementById("apptDate").value;
-  if (!docId || !date) return;
-  const res = await fetch(`http://127.0.0.1:8000/api/slots/?doctor_id=${docId}&date=${date}`, {
-    headers: { "Authorization": `Token ${token}` }
-  });
-  const data = await res.json();
   const select = document.getElementById("slotSelect");
-  select.innerHTML = "";
-  (data || []).forEach(s => {
-    select.innerHTML += `<option value="${s}">${s}</option>`;
-  });
+  
+  if (!docId || !date) {
+    select.innerHTML = "<option value=''>Select doctor and date first</option>";
+    return;
+  }
+  
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/slots/?doctor_id=${docId}&date=${date}`, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Slots API returned ${res.status}`);
+    }
+    
+    const slots = await res.json();
+    select.innerHTML = "";
+    
+    if (Array.isArray(slots) && slots.length > 0) {
+      slots.forEach(s => {
+        const [h, m] = s.split(":");
+        let endHour = parseInt(h,10), endMin = parseInt(m,10) + 30;
+        if (endMin >= 60) { endHour += 1; endMin -= 60; }
+        select.innerHTML += `<option value="${s}">${s} - ${String(endHour).padStart(2,"0")}:${String(endMin).padStart(2,"0")}</option>`;
+      });
+    } else {
+      select.innerHTML = "<option value=''>No slots available</option>";
+    }
+    
+  } catch (error) {
+    console.error("Slots load error:", error);
+    select.innerHTML = "<option value=''>Error loading slots</option>";
+    showError("Failed to load slots: " + error.message);
+  }
 }
 
+// ✅ Load available slots for update modal
+async function loadUpdateSlots() {
+  const docId = document.getElementById("updateDoctorSelect").value;
+  const date = document.getElementById("updateDate").value;
+  const select = document.getElementById("updateSlotSelect");
+  
+  if (!date) {
+    select.innerHTML = "<option value=''>Select date first</option>";
+    return;
+  }
+  
+  // If no doctor selected in update, we can't load slots
+  if (!docId) {
+    select.innerHTML = "<option value=''>Select doctor to see available slots</option>";
+    return;
+  }
+  
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/slots/?doctor_id=${docId}&date=${date}`, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Update slots API returned ${res.status}`);
+    }
+    
+    const slots = await res.json();
+    select.innerHTML = "";
+    
+    if (Array.isArray(slots) && slots.length > 0) {
+      slots.forEach(s => {
+        const [h, m] = s.split(":");
+        let endHour = parseInt(h,10), endMin = parseInt(m,10) + 30;
+        if (endMin >= 60) { endHour += 1; endMin -= 60; }
+        select.innerHTML += `<option value="${s}">${s} - ${String(endHour).padStart(2,"0")}:${String(endMin).padStart(2,"0")}</option>`;
+      });
+    } else {
+      select.innerHTML = "<option value=''>No slots available</option>";
+    }
+    
+  } catch (error) {
+    console.error("Update slots load error:", error);
+    select.innerHTML = "<option value=''>Error loading slots</option>";
+    showError("Failed to load update slots: " + error.message);
+  }
+}
+
+// ✅ Book appointment
 async function bookAppointment() {
+  const bookBtn = document.getElementById("bookBtn");
   const doctor_id = document.getElementById("doctorSelect").value;
   const date = document.getElementById("apptDate").value;
   const time = document.getElementById("slotSelect").value;
-  if (!doctor_id || !date || !time) return alert("Select doctor, date, and slot.");
-  const res = await fetch("http://127.0.0.1:8000/api/appointments/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Token ${token}` },
-    body: JSON.stringify({ doctor_id, date, time })
-  });
-  const data = await res.json();
-  if (res.ok) { alert("Appointment booked!"); loadPatientDashboard(); }
-  else { alert(data.detail || "Booking failed."); }
-}
-
-async function uploadDocument() {
   const file = document.getElementById("docFile").files[0];
-  if (!file) return alert("Please select a file.");
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("http://127.0.0.1:8000/api/documents/", {
-    method: "POST",
-    headers: { "Authorization": `Token ${token}` },
-    body: formData
-  });
-  const data = await res.json();
-  if (res.ok) { alert("Uploaded!"); loadDocuments(); }
-  else { alert(data.detail || "Upload failed."); }
+
+  if (!doctor_id || !date || !time) {
+    showError("Please select doctor, date, and time slot.");
+    return;
+  }
+
+  // ✅ Disable button and show loading
+  bookBtn.disabled = true;
+  bookBtn.textContent = "Booking...";
+
+  try {
+    // ✅ Book appointment first
+    const appointmentRes = await fetch("http://127.0.0.1:8000/api/appointments/", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Token ${token}` 
+      },
+      body: JSON.stringify({
+        doctor_id: doctor_id,
+        date: date,
+        time: time  // Backend expects 'time' or 'slot'
+      })
+    });
+    
+    const appointmentData = await appointmentRes.json();
+    
+    if (!appointmentRes.ok) {
+      throw new Error(appointmentData.error || appointmentData.detail || "Booking failed");
+    }
+
+    // ✅ Upload document if provided (optional)
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append("document", file);
+        
+        const docRes = await fetch("http://127.0.0.1:8000/api/documents/upload/", {
+          method: "POST",
+          headers: { "Authorization": `Token ${token}` },
+          body: formData
+        });
+        
+        if (!docRes.ok) {
+          console.warn("Document upload failed, but appointment was booked");
+          showSuccess("Appointment booked! (Document upload failed - you can try uploading later)");
+        } else {
+          showSuccess("Appointment booked successfully!");
+        }
+      } catch (docError) {
+        console.warn("Document upload error:", docError);
+        showSuccess("Appointment booked! (Document upload failed - you can try uploading later)");
+      }
+    } else {
+      showSuccess("Appointment booked successfully!");
+    }
+
+    // ✅ Clear form
+    document.getElementById("specializationFilter").value = "";
+    document.getElementById("doctorSelect").innerHTML = "<option value=''>Select specialization first</option>";
+    document.getElementById("apptDate").value = "";
+    document.getElementById("slotSelect").innerHTML = "<option value=''>Select doctor and date first</option>";
+    document.getElementById("docFile").value = "";
+
+    // ✅ Reload dashboard
+    await loadPatientDashboard();
+
+  } catch (error) {
+    console.error("Booking error:", error);
+    showError("Booking failed: " + error.message);
+  } finally {
+    bookBtn.disabled = false;
+    bookBtn.textContent = "Book";
+  }
 }
 
-async function loadDocuments() {
-  const res = await fetch("http://127.0.0.1:8000/api/documents/", {
-    headers: { "Authorization": `Token ${token}` }
-  });
-  const data = await res.json();
-  const list = document.getElementById("docList");
-  list.innerHTML = "";
-  data.forEach(doc => {
-    list.innerHTML += `<li><a href="${doc.file}" target="_blank">${doc.filename}</a></li>`;
-  });
+// ✅ Modal functions for update appointment
+function openUpdateModal(appointmentId, currentDate, currentTime, doctorName) {
+  currentUpdateAppointmentId = appointmentId;
+  document.getElementById("updateDate").value = currentDate;
+  document.getElementById("updateModal").style.display = "block";
+  
+  // Reset the doctor selection to show current doctor info
+  const updateSelect = document.getElementById("updateDoctorSelect");
+  updateSelect.innerHTML = `<option value="">Keep current doctor (${doctorName})</option>`;
+  
+  // Reload all doctors for selection
+  loadAllDoctorsForUpdate();
+  
+  // Clear slots initially
+  document.getElementById("updateSlotSelect").innerHTML = "<option value=''>Select doctor to see available slots</option>";
+}
+
+function closeUpdateModal() {
+  document.getElementById("updateModal").style.display = "none";
+  currentUpdateAppointmentId = null;
+}
+
+// ✅ FIXED: Confirm appointment update
+async function confirmUpdate() {
+  if (!currentUpdateAppointmentId) return;
+  
+  const updateBtn = document.getElementById("updateBtn");
+  const newDoctorId = document.getElementById("updateDoctorSelect").value;
+  const newDate = document.getElementById("updateDate").value;
+  const newSlot = document.getElementById("updateSlotSelect").value;
+
+  if (!newDate) {
+    showError("Please select a date.");
+    return;
+  }
+
+  // ✅ Build update payload - only include fields that are being changed
+  const updateData = {
+    date: newDate
+  };
+
+  // ✅ Only include doctor if user selected one
+  if (newDoctorId) {
+    updateData.doctor_id = newDoctorId;
+  }
+
+  // ✅ Only include slot if user selected one AND selected a doctor
+  if (newSlot && newDoctorId) {
+    updateData.slot = newSlot; // ✅ Use 'slot' instead of 'time'
+  } else if (newSlot && !newDoctorId) {
+    showError("Please select a doctor to update the time slot.");
+    return;
+  }
+
+  updateBtn.disabled = true;
+  updateBtn.textContent = "Updating...";
+
+  try {
+    // ✅ Try the custom update endpoint first
+    let res = await fetch(`http://127.0.0.1:8000/api/appointment/${currentUpdateAppointmentId}/update/`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Token ${token}` 
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!res.ok) {
+      // ✅ If custom endpoint fails, try PATCH endpoint
+      res = await fetch(`http://127.0.0.1:8000/api/appointments/${currentUpdateAppointmentId}/`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Token ${token}` 
+        },
+        body: JSON.stringify(updateData)
+      });
+    }
+
+    const responseData = await res.json();
+
+    if (res.ok) {
+      showSuccess("Appointment updated successfully!");
+      closeUpdateModal();
+      await loadPatientDashboard();
+    } else {
+      throw new Error(responseData.error || responseData.detail || "Update failed");
+    }
+
+  } catch (error) {
+    console.error("Update error:", error);
+    showError("Update failed: " + error.message);
+  } finally {
+    updateBtn.disabled = false;
+    updateBtn.textContent = "Update Appointment";
+  }
+}
+
+// ✅ Cancel appointment
+async function cancelAppointment(id) {
+  if (!confirm("Cancel this appointment?")) return;
+
+  try {
+    const res1 = await fetch(`http://127.0.0.1:8000/api/appointment/${id}/cancel/`, {
+      method: "POST",
+      headers: { "Authorization": `Token ${token}` }
+    });
+    if (res1.ok) {
+      showSuccess("Appointment cancelled successfully!");
+      await loadPatientDashboard();
+      return;
+    }
+  } catch {}
+
+  try {
+    const res2 = await fetch(`http://127.0.0.1:8000/api/appointments/${id}/`, {
+      method: "DELETE",
+      headers: { "Authorization": `Token ${token}` }
+    });
+    if (res2.ok) {
+      showSuccess("Appointment cancelled successfully!");
+      await loadPatientDashboard();
+    } else {
+      showError("Cancel failed.");
+    }
+  } catch {
+    showError("Cancel failed due to a network error.");
+  }
 }
 
 function logout() {
@@ -200,7 +621,7 @@ function logout() {
   window.location.href = "login.html";
 }
 
-// Chatbot
+// Chatbot functionality
 const chatBtn = document.getElementById("chatbotBtn");
 const chatWin = document.getElementById("chatWindow");
 const chatMessages = document.getElementById("chatMessages");
@@ -223,15 +644,21 @@ function addMsg(text, sender) {
 async function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
+  
   addMsg(text, "user");
   history.push({ role: "user", content: text });
   chatInput.value = "";
+  
   try {
     const res = await fetch("http://127.0.0.1:8000/api/chat/", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Token ${token}` },
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Token ${token}` 
+      },
       body: JSON.stringify({ messages: history })
     });
+    
     const data = await res.json();
     if (res.ok && data.reply) {
       addMsg(data.reply, "bot");
@@ -239,16 +666,35 @@ async function sendChat() {
     } else {
       addMsg(data.detail || "Error: Unable to get response.", "bot");
     }
-  } catch {
+  } catch (error) {
+    console.error("Chat error:", error);
     addMsg("Error: Could not connect to chatbot.", "bot");
   }
 }
 
 chatSend.addEventListener("click", sendChat);
-chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+chatInput.addEventListener("keydown", e => { 
+  if (e.key === "Enter") sendChat(); 
+});
 
+// ✅ Modal close button event listener
+document.querySelector(".close").addEventListener("click", closeUpdateModal);
+
+// ✅ Close modal when clicking outside
+window.addEventListener("click", (event) => {
+  const modal = document.getElementById("updateModal");
+  if (event.target === modal) {
+    closeUpdateModal();
+  }
+});
+
+// ✅ Initialize dashboard on page load
+document.addEventListener("DOMContentLoaded", () => {
+  loadPatientDashboard();
+});
+
+// ✅ Also call it directly for immediate loading
 loadPatientDashboard();
-loadDocuments();
 </script>
 </body>
 </html>
