@@ -29,6 +29,10 @@ urlpatterns = [
     path("doctors/", views.DoctorListView.as_view(), name="doctor-list"),
     # ✅ ADD: Frontend expects this endpoint for specializations
     path("doctors/specializations/", views.SpecializationListView.as_view(), name="specializations-list"),
+    # Add this to your urlpatterns in urls.py
+    path('doctor/patient/<str:username>/', views.DoctorPatientDetailView.as_view(), name='doctor-patient-detail'),
+    path('save-prescription/', views.SavePrescriptionView.as_view(), name='save-prescription'),
+path('patient-history-summary/', views.PatientHistorySummaryView.as_view(), name='patient-history-summary'),
 
     # =======================
     # Users CRUD

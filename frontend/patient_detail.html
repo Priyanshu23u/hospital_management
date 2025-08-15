@@ -343,6 +343,17 @@
             font-style: italic;
         }
         
+        /* Debug info styles */
+        .debug-info {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .header-content {
@@ -384,6 +395,12 @@
     <div class="container">
         <!-- Alert container -->
         <div id="alertContainer"></div>
+        
+        <!-- Debug Info (remove in production) -->
+        <div id="debugInfo" class="debug-info" style="display: none;">
+            <strong>Debug Information:</strong><br>
+            <span id="debugContent"></span>
+        </div>
 
         <!-- Patient Information Card -->
         <div class="card">
@@ -481,16 +498,29 @@
     </div>
 
     <script>
-        const token = localStorage.getItem("authToken");
+        // ===== AUTHENTICATION AND INITIALIZATION =====
+        const token = localStorage.getItem("authToken"); // Use same token name as dashboard
+        
+        // Debug function
+        function showDebugInfo(info) {
+            const debugDiv = document.getElementById("debugInfo");
+            const debugContent = document.getElementById("debugContent");
+            debugDiv.style.display = 'block';
+            debugContent.innerHTML = info;
+            console.log("DEBUG:", info);
+        }
+        
         if (!token) {
-            alert("Please login first.");
+            alert("Please login first. No authentication token found.");
             window.location.href = "login.html";
+        } else {
+            showDebugInfo(`Token found: ${token.substring(0, 10)}...`);
         }
 
         let currentPatientUsername = null;
         let patientData = null;
 
-        // Utility functions
+        // ===== UTILITY FUNCTIONS =====
         function showAlert(message, type = 'info') {
             const alertContainer = document.getElementById("alertContainer");
             const alertDiv = document.createElement('div');
@@ -507,6 +537,7 @@
 
         function showError(message) {
             showAlert("Error: " + message, 'error');
+            console.error("Error:", message);
         }
 
         function showSuccess(message) {
@@ -526,9 +557,11 @@
             return `<span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
         }
 
-        // Get patient username from localStorage
+        // ===== PATIENT SELECTION =====
         function getSelectedPatient() {
             const patientName = localStorage.getItem('selectedPatient');
+            showDebugInfo(`Selected patient from localStorage: ${patientName}`);
+            
             if (!patientName) {
                 alert("No patient selected. Redirecting to dashboard...");
                 window.location.href = "doctor_dashboard.html";
@@ -537,39 +570,49 @@
             return patientName;
         }
 
-        // Load patient data when page loads
+        // ===== MAIN DATA LOADING FUNCTIONS =====
         async function loadPatientData() {
             currentPatientUsername = getSelectedPatient();
             if (!currentPatientUsername) return;
 
             document.getElementById("patientTitle").textContent = `Patient Details: ${currentPatientUsername}`;
+            showDebugInfo(`Loading data for patient: ${currentPatientUsername}`);
             
             try {
                 // Load all patient information
-                await Promise.all([
-                    loadPatientInfo(),
-                    loadAppointmentHistory(),
-                    loadPatientDocuments()
-                ]);
+                await loadPatientInfo();
+                await loadAppointmentHistory();
+                await loadPatientDocuments();
             } catch (error) {
                 console.error("Error loading patient data:", error);
-                showError("Failed to load patient data");
+                showError("Failed to load patient data: " + error.message);
             }
         }
 
-        // Load patient basic information
+        // ===== LOAD PATIENT INFORMATION =====
         async function loadPatientInfo() {
             try {
                 const patientInfoContainer = document.getElementById("patientInfo");
                 patientInfoContainer.innerHTML = '<div class="no-data">Loading patient information...</div>';
 
+                const apiUrl = `http://127.0.0.1:8000/api/doctor/patient/${currentPatientUsername}/`;
+                showDebugInfo(`API URL: ${apiUrl}<br>Token: ${token.substring(0, 20)}...`);
+
                 // Try to fetch detailed patient info
-                const res = await fetch(`http://127.0.0.1:8000/api/doctor/patient/${currentPatientUsername}/`, {
-                    headers: { "Authorization": `Token ${token}` }
+                const res = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: { 
+                        "Authorization": `Token ${token}`,
+                        "Content-Type": "application/json"
+                    }
                 });
+
+                showDebugInfo(`API Response Status: ${res.status} ${res.statusText}`);
+                console.log("Patient API Response:", res);
 
                 if (res.ok) {
                     const data = await res.json();
+                    console.log("Patient API Data:", data);
                     patientData = data;
                     const patient = data.patient_info;
                     
@@ -602,20 +645,36 @@
                         </div>
                     `;
                 } else {
-                    throw new Error('Patient detail API not available');
+                    // Get error details
+                    const errorText = await res.text();
+                    console.error("API Error Response:", errorText);
+                    showDebugInfo(`API Error: ${res.status} - ${errorText}`);
+                    
+                    throw new Error(`Patient detail API returned ${res.status}: ${errorText}`);
                 }
             } catch (error) {
                 console.error("Error loading patient info:", error);
+                showError(`Failed to load patient info: ${error.message}`);
+                
+                // Show fallback info
                 document.getElementById("patientInfo").innerHTML = `
                     <div class="info-item">
                         <label>⚠️ Patient Information</label>
-                        <span style="color:#ef4444;">Error loading detailed patient information. API endpoint may not be implemented.</span>
+                        <span style="color:#ef4444;">Error loading detailed patient information: ${error.message}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>🔧 Possible Solutions</label>
+                        <span>
+                            1. Check if backend server is running<br>
+                            2. Verify API endpoint exists: /api/doctor/patient/{username}/<br>
+                            3. Check browser console for detailed errors
+                        </span>
                     </div>
                 `;
             }
         }
 
-        // Load appointment history
+        // ===== LOAD APPOINTMENT HISTORY =====
         async function loadAppointmentHistory() {
             try {
                 const tableBody = document.getElementById("appointmentHistoryTable");
@@ -626,6 +685,7 @@
 
                 if (patientData && patientData.appointment_history) {
                     const appointments = patientData.appointment_history;
+                    console.log("Appointment history:", appointments);
                     
                     if (appointments.length > 0) {
                         tableBody.innerHTML = '';
@@ -666,16 +726,17 @@
                         tableBody.innerHTML = '<tr><td colspan="5" class="no-data">No appointments found with this doctor</td></tr>';
                     }
                 } else {
-                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data">Unable to load appointment history</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data">Unable to load appointment history - API response missing</td></tr>';
+                    console.error("No patientData or appointment_history in response");
                 }
             } catch (error) {
                 console.error("Error loading appointment history:", error);
                 document.getElementById("appointmentHistoryTable").innerHTML = 
-                    '<tr><td colspan="5" class="no-data">Error loading appointment history</td></tr>';
+                    `<tr><td colspan="5" class="no-data">Error loading appointment history: ${error.message}</td></tr>`;
             }
         }
 
-        // Load patient documents
+        // ===== LOAD PATIENT DOCUMENTS =====
         async function loadPatientDocuments() {
             try {
                 const documentsContainer = document.getElementById("documentsContainer");
@@ -683,6 +744,7 @@
 
                 if (patientData && patientData.documents) {
                     const documents = patientData.documents;
+                    console.log("Documents:", documents);
                     
                     if (documents.length > 0) {
                         documentsContainer.innerHTML = documents.map(doc => `
@@ -710,19 +772,19 @@
                 } else {
                     documentsContainer.innerHTML = `
                         <div class="no-data">
-                            📄 Document feature requires API implementation<br>
-                            <small>Add endpoint: GET /api/doctor/patient/{username}/</small>
+                            📄 Documents not available in API response<br>
+                            <small>Check if API endpoint returns documents array</small>
                         </div>
                     `;
                 }
             } catch (error) {
                 console.error("Error loading patient documents:", error);
                 document.getElementById("documentsContainer").innerHTML = 
-                    '<div class="no-data">❌ Error loading documents</div>';
+                    `<div class="no-data">❌ Error loading documents: ${error.message}</div>`;
             }
         }
 
-        // Edit prescription for specific appointment
+        // ===== PRESCRIPTION MANAGEMENT =====
         function editPrescription(appointmentId, date, time) {
             document.getElementById("appointmentSelect").value = appointmentId;
             
@@ -739,7 +801,6 @@
             showAlert(`Selected appointment: ${date} at ${time}`, 'info');
         }
 
-        // Save prescription
         async function savePrescription() {
             const appointmentId = document.getElementById("appointmentSelect").value;
             const prescriptionText = document.getElementById("prescriptionText").value.trim();
@@ -773,7 +834,10 @@
                     })
                 });
 
+                console.log("Save prescription response:", res);
+
                 if (!res.ok) {
+                    console.log("Trying fallback appointment API...");
                     // Fallback to appointment update API
                     res = await fetch(`http://127.0.0.1:8000/api/appointments/${appointmentId}/`, {
                         method: "PATCH",
@@ -790,11 +854,12 @@
                     document.getElementById("prescriptionText").value = "";
                     document.getElementById("appointmentSelect").value = "";
                     
-                    // Reload appointment history
+                    // Reload patient data
                     await loadPatientData();
                 } else {
-                    const data = await res.json();
-                    throw new Error(data.error || data.detail || "Failed to save prescription");
+                    const errorData = await res.text();
+                    console.error("Save prescription error:", errorData);
+                    throw new Error(`Server returned ${res.status}: ${errorData}`);
                 }
             } catch (error) {
                 console.error("Save prescription error:", error);
@@ -805,7 +870,7 @@
             }
         }
 
-        // Generate AI summary
+        // ===== AI SUMMARY =====
         async function generateAISummary() {
             const summaryCard = document.getElementById("aiSummaryCard");
             const summaryContent = document.getElementById("aiSummaryContent");
@@ -825,13 +890,16 @@
                     })
                 });
 
+                console.log("AI Summary response:", res);
+
                 if (res.ok) {
                     const data = await res.json();
                     summaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
                     showSuccess("AI summary generated successfully!");
                 } else {
-                    const error = await res.json();
-                    throw new Error(error.error || error.detail || "Failed to generate summary");
+                    const errorData = await res.text();
+                    console.error("AI Summary error:", errorData);
+                    throw new Error(`Server returned ${res.status}: ${errorData}`);
                 }
             } catch (error) {
                 console.error("AI summary error:", error);
@@ -840,7 +908,7 @@
             }
         }
 
-        // View full prescription
+        // ===== DOCUMENT FUNCTIONS =====
         function viewFullPrescription(prescription) {
             const prescriptionWindow = window.open('', '_blank', 'width=600,height=400,scrollbars=yes,resizable=yes');
             prescriptionWindow.document.write(`
@@ -868,7 +936,6 @@
             `);
         }
 
-        // View document
         function viewDocument(url) {
             if (url) {
                 window.open(url, '_blank');
@@ -877,7 +944,6 @@
             }
         }
 
-        // Download document
         function downloadDocument(url) {
             if (url) {
                 const link = document.createElement('a');
@@ -891,7 +957,7 @@
             }
         }
 
-        // Refresh functions
+        // ===== REFRESH FUNCTIONS =====
         async function refreshPatientData() {
             showAlert("Refreshing patient data...", 'info');
             await loadPatientData();
@@ -907,9 +973,8 @@
             document.getElementById("aiSummaryCard").style.display = 'none';
         }
 
-        // Navigation functions
+        // ===== NAVIGATION FUNCTIONS =====
         function goBackToDashboard() {
-            // Clear selected patient
             localStorage.removeItem('selectedPatient');
             window.location.href = "doctor_dashboard.html";
         }
@@ -925,18 +990,17 @@
             }
         }
 
-        // Initialize page
+        // ===== INITIALIZATION =====
         document.addEventListener("DOMContentLoaded", () => {
+            console.log("Page loaded, initializing...");
             loadPatientData();
             
             // Add keyboard shortcuts
             document.addEventListener("keydown", (e) => {
-                // ESC to go back to dashboard
                 if (e.key === "Escape") {
                     goBackToDashboard();
                 }
                 
-                // Ctrl+R to refresh patient data
                 if (e.ctrlKey && e.key === "r") {
                     e.preventDefault();
                     refreshPatientData();

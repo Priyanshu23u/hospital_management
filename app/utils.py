@@ -23,19 +23,19 @@ def generate_daily_slots(date):
         cur += timedelta(minutes=SLOT_MINUTES)
     return slots
 
-def get_booked_slots(doctor_id, date):
-    """Return booked slots for a given doctor/date."""
-    return [
-        appt.slot.strftime("%H:%M")
-        for appt in Appointment.objects.filter(
-            doctor_id=doctor_id, date=date, status="booked"
-        )
-    ]
+def get_booked_slots(doctor, date):
+    # ✅ FIXED: Only consider appointments that are NOT cancelled
+    appointments = Appointment.objects.filter(
+        doctor=doctor, 
+        date=date
+    ).exclude(status='cancelled')  # ✅ This is the key fix
+    
+    return [a.slot.strftime("%H:%M") if hasattr(a.slot, 'strftime') else str(a.slot) for a in appointments]
 
-def get_available_slots(doctor_id, date):
-    """Return available slots for a given doctor/date."""
-    all_slots = generate_daily_slots(date)
-    booked = set(get_booked_slots(doctor_id, date))
+
+def get_available_slots(doctor, date):
+    all_slots = generate_daily_slots()
+    booked = get_booked_slots(doctor, date)
     return [s for s in all_slots if s not in booked]
 
 def validate_slot(slot_str, date):

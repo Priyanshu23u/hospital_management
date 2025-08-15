@@ -11,15 +11,21 @@
   header .welcome { font-size:16px; margin-top:4px; }
   header .spec { font-size:14px; margin-top:2px; color:#dbeafe; }
   .header-actions { position:absolute; right:20px; top:14px; }
-  .container{ padding:20px; max-width:1000px; margin:auto }
+  .container{ padding:20px; max-width:1200px; margin:auto }
   .card{ background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:18px }
   table{ width:100%; border-collapse:collapse; font-size:14px }
   th,td{ border:1px solid #e5e7eb; padding:10px; text-align:left }
   th{ background:#2f80ed; color:#fff }
-  button.primary{ background:#2f80ed;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer }
+  button.primary{ background:#2f80ed;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;margin:2px; }
   button.primary:hover { background:#1f5bb5; }
+  button.secondary{ background:#6b7280;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;margin:2px; }
+  button.secondary:hover { background:#4b5563; }
+  button.danger{ background:#dc2626;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;margin:2px; }
+  button.danger:hover { background:#b91c1c; }
   input,select,textarea{ width:100%; padding:8px;border:1px solid #d1d5db;border-radius:6px;margin:6px 0; font-size:14px }
-  #aiSummary { background:#f9fafb; border:1px solid #ddd; padding:10px; border-radius:6px; min-height:50px }
+  .patient-id { font-weight:bold; color:#2f80ed; }
+  .no-data { text-align:center; color:#6b7280; padding:20px; font-style:italic; }
+  
   /* Chatbot styles */
   #chatbotBtn{position:fixed;bottom:20px;right:20px;background:#2f80ed;color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:24px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:9999}
   #chatWindow{position:fixed;bottom:90px;right:20px;width:320px;height:440px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;z-index:9999}
@@ -29,6 +35,24 @@
   #chatInput{display:flex;border-top:1px solid #e5e7eb}
   #chatInput input{flex:1;padding:10px;border:none;outline:none}
   #chatInput button{padding:10px 14px;background:#2f80ed;color:#fff;border:none;cursor:pointer}
+  
+  /* Loading state */
+  .loading { opacity:0.6; pointer-events:none; }
+  .spinner { border:2px solid #f3f3f3; border-top:2px solid #2f80ed; border-radius:50%; width:20px; height:20px; animation:spin 1s linear infinite; display:inline-block; margin-right:10px; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  /* Alert styles */
+  .alert { padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:14px; }
+  .alert-success { background:#dcfce7; border:1px solid #bbf7d0; color:#166534; }
+  .alert-error { background:#fee2e2; border:1px solid #fecaca; color:#991b1b; }
+  .alert-info { background:#dbeafe; border:1px solid #bfdbfe; color:#1e40af; }
+  
+  /* Status badges */
+  .status-badge { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; }
+  .status-booked { background:#dbeafe; color:#1e40af; }
+  .status-confirmed { background:#dcfce7; color:#166534; }
+  .status-completed { background:#f3f4f6; color:#374151; }
+  .status-cancelled { background:#fee2e2; color:#991b1b; }
 </style>
 </head>
 <body>
@@ -43,10 +67,13 @@
 </header>
 
 <div class="container">
+  <!-- Alert container for notifications -->
+  <div id="alertContainer"></div>
+
   <div class="card">
-    <h2>Today’s Schedule</h2>
+    <h2>Today's Schedule</h2>
     <table id="todayTable">
-      <thead><tr><th>Time</th><th>Patient</th><th>Reason</th><th>Action</th></tr></thead>
+      <thead><tr><th>Time</th><th>Patient ID</th><th>Patient Name</th><th>Reason</th><th>Actions</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -54,7 +81,7 @@
   <div class="card">
     <h2>Upcoming Appointments</h2>
     <table id="upcomingTable">
-      <thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Action</th></tr></thead>
+      <thead><tr><th>Date</th><th>Time</th><th>Patient ID</th><th>Patient Name</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -62,35 +89,25 @@
   <div class="card">
     <h2>Past Appointments</h2>
     <table id="pastTable">
-      <thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Prescription</th></tr></thead>
+      <thead><tr><th>Date</th><th>Time</th><th>Patient ID</th><th>Patient Name</th><th>Prescription</th><th>Actions</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
 
   <div class="card">
-    <h2>Update Prescription / Notes</h2>
-    <label>Appointment ID</label>
-    <input type="text" id="apptId" placeholder="e.g., 42">
-    <label>Prescription / Notes</label>
-    <textarea id="prescription" rows="4" placeholder="Enter notes..."></textarea>
-    <button class="primary" onclick="savePrescription()">Save</button>
-  </div>
-
-  <div class="card">
-    <h2>AI: Summarize Patient History</h2>
-    <label>Patient ID</label>
-    <input type="text" id="patientId" placeholder="e.g., 15">
-    <button class="primary" onclick="aiSummarize()">Summarize</button>
-    <div id="aiSummary" style="margin-top:10px; white-space:pre-wrap;"></div>
+    <h2>Quick Actions</h2>
+    <button class="primary" onclick="showAllPatients()">View All Patients</button>
+    <button class="secondary" onclick="showAppointmentStats()">Appointment Statistics</button>
   </div>
 </div>
 
 <!-- Chatbot UI -->
-<button id="chatbotBtn" title="Chat">💬</button>
+<button id="chatbotBtn" title="AI Medical Assistant">💬</button>
 <div id="chatWindow">
+  <div style="background:#2f80ed;color:#fff;padding:10px;font-weight:bold;text-align:center;">AI Medical Assistant</div>
   <div id="chatMessages"></div>
   <div id="chatInput">
-    <input type="text" id="chatText" placeholder="Ask something...">
+    <input type="text" id="chatText" placeholder="Ask about medical conditions, treatments...">
     <button id="chatSend">Send</button>
   </div>
 </div>
@@ -102,14 +119,58 @@ if (!token) {
   window.location.href = "login.html";
 }
 
+let dashboardData = {};
+
+// Utility functions
+function showAlert(message, type = 'info') {
+  const alertContainer = document.getElementById("alertContainer");
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type}`;
+  alertDiv.textContent = message;
+  alertContainer.appendChild(alertDiv);
+  
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    if (alertDiv.parentNode) {
+      alertDiv.parentNode.removeChild(alertDiv);
+    }
+  }, 5000);
+}
+
+function showError(message) {
+  showAlert("Error: " + message, 'error');
+}
+
+function showSuccess(message) {
+  showAlert(message, 'success');
+}
+
+function setLoading(elementId, loading) {
+  const element = document.getElementById(elementId);
+  if (loading) {
+    element.classList.add('loading');
+  } else {
+    element.classList.remove('loading');
+  }
+}
+
+function getStatusBadge(status) {
+  return `<span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+}
+
+// Load doctor dashboard
 async function loadDoctorDashboard() {
   try {
     const res = await fetch("http://127.0.0.1:8000/api/doctor/dashboard/", {
       headers: { "Authorization": `Token ${token}` }
     });
+    
+    if (!res.ok) throw new Error(`Dashboard API returned ${res.status}`);
+    
     const data = await res.json();
+    dashboardData = data;
 
-    // ✅ NEW — Show welcome + specialization
+    // Update header info
     if (data.doctor_name) {
       document.getElementById("welcomeMsg").textContent = `Welcome Dr. ${data.doctor_name}`;
     }
@@ -117,101 +178,225 @@ async function loadDoctorDashboard() {
       document.getElementById("specMsg").textContent = `Specialization: ${data.specialization}`;
     }
 
-    const todayT = document.querySelector("#todayTable tbody");
-    const upT = document.querySelector("#upcomingTable tbody");
-    const pastT = document.querySelector("#pastTable tbody");
-    todayT.innerHTML = "";
-    upT.innerHTML = "";
-    pastT.innerHTML = "";
+    // Populate tables
+    populateAppointmentTables(data);
 
-    (data.today || []).forEach(a => {
-      todayT.innerHTML += `<tr>
-        <td>${a.time}</td><td>${a.patient_name}</td><td>${a.reason || ""}</td>
-        <td><button class="primary" onclick="openAppt(${a.id})">Open</button></td>
-      </tr>`;
-    });
-
-    (data.upcoming || []).forEach(a => {
-      upT.innerHTML += `<tr>
-        <td>${a.date}</td><td>${a.time}</td><td>${a.patient_name}</td>
-        <td><button class="primary" onclick="openAppt(${a.id})">Open</button></td>
-      </tr>`;
-    });
-
-    (data.past || []).forEach(a => {
-      pastT.innerHTML += `<tr>
-        <td>${a.date}</td><td>${a.time}</td><td>${a.patient_name}</td><td>${a.prescription || "N/A"}</td>
-      </tr>`;
-    });
-
-  } catch {
-    alert("Failed to load dashboard.");
+  } catch (error) {
+    console.error("Dashboard load error:", error);
+    showError("Failed to load dashboard: " + error.message);
   }
 }
 
-function openAppt(id) {
-  document.getElementById("apptId").value = id;
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+// Populate appointment tables with patient IDs
+function populateAppointmentTables(data) {
+  const todayT = document.querySelector("#todayTable tbody");
+  const upT = document.querySelector("#upcomingTable tbody");
+  const pastT = document.querySelector("#pastTable tbody");
+  
+  todayT.innerHTML = "";
+  upT.innerHTML = "";
+  pastT.innerHTML = "";
+
+  // Today's appointments
+  if (data.today && data.today.length > 0) {
+    data.today.forEach(a => {
+      todayT.innerHTML += `<tr>
+        <td>${a.time}</td>
+        <td class="patient-id">P-${a.patient_id || 'N/A'}</td>
+        <td>${a.patient_name}</td>
+        <td>${a.reason || "General Consultation"}</td>
+        <td>
+          <button class="primary" onclick="openPatientDetail('${a.patient_name}')">Open</button>
+          <button class="secondary" onclick="quickPrescription(${a.id}, '${a.patient_name}')">Quick Rx</button>
+        </td>
+      </tr>`;
+    });
+  } else {
+    todayT.innerHTML = '<tr><td colspan="5" class="no-data">No appointments today</td></tr>';
+  }
+
+  // Upcoming appointments
+  if (data.upcoming && data.upcoming.length > 0) {
+    data.upcoming.forEach(a => {
+      const status = a.status || 'booked';
+      upT.innerHTML += `<tr>
+        <td>${a.date}</td>
+        <td>${a.time}</td>
+        <td class="patient-id">P-${a.patient_id || 'N/A'}</td>
+        <td>${a.patient_name}</td>
+        <td>${getStatusBadge(status)}</td>
+        <td>
+          <button class="primary" onclick="openPatientDetail('${a.patient_name}')">Open</button>
+        </td>
+      </tr>`;
+    });
+  } else {
+    upT.innerHTML = '<tr><td colspan="6" class="no-data">No upcoming appointments</td></tr>';
+  }
+
+  // Past appointments
+  if (data.past && data.past.length > 0) {
+    data.past.forEach(a => {
+      const prescriptionCell = a.prescription 
+        ? `<span title="${a.prescription}">${a.prescription.length > 50 ? a.prescription.substring(0, 50) + '...' : a.prescription}</span>`
+        : '<span style="color:#6b7280;">Not added</span>';
+      
+      pastT.innerHTML += `<tr>
+        <td>${a.date}</td>
+        <td>${a.time}</td>
+        <td class="patient-id">P-${a.patient_id || 'N/A'}</td>
+        <td>${a.patient_name}</td>
+        <td>${prescriptionCell}</td>
+        <td>
+          <button class="primary" onclick="openPatientDetail('${a.patient_name}')">Open</button>
+          ${!a.prescription ? `<button class="secondary" onclick="quickPrescription(${a.id}, '${a.patient_name}')">Add Rx</button>` : ''}
+        </td>
+      </tr>`;
+    });
+  } else {
+    pastT.innerHTML = '<tr><td colspan="6" class="no-data">No past appointments</td></tr>';
+  }
 }
 
-async function savePrescription() {
-  const id = document.getElementById("apptId").value.trim();
-  const text = document.getElementById("prescription").value.trim();
-  if (!id || !text) return alert("Appointment ID and notes are required.");
-  const res = await fetch(`http://127.0.0.1:8000/api/appointments/${id}/`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Token ${token}`
-    },
-    body: JSON.stringify({ prescription: text })
-  });
-  const data = await res.json();
-  if (res.ok) { alert("Saved!"); loadDoctorDashboard(); }
-  else { alert(data.detail || "Failed to save."); }
+// Navigate to patient detail page
+function openPatientDetail(patientName) {
+  // Store patient name in localStorage for the detail page
+  localStorage.setItem('selectedPatient', patientName);
+  // Navigate to patient detail page
+  window.location.href = `patient_detail.html`;
 }
 
-async function aiSummarize() {
-  const pid = document.getElementById("patientId").value.trim();
-  if (!pid) return alert("Enter Patient ID.");
-  const messages = [
-    { role: "user", content: `Summarize medical history for patient_id=${pid}. Highlight key diagnoses, meds, allergies, abnormal labs, and trends. Keep it concise.` }
-  ];
+// Quick prescription for appointments
+async function quickPrescription(appointmentId, patientName) {
+  const prescription = prompt(`Enter prescription/notes for ${patientName}:`);
+  if (!prescription || !prescription.trim()) return;
+  
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/chat/", {
-      method: "POST",
+    const res = await fetch(`http://127.0.0.1:8000/api/appointments/${appointmentId}/`, {
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Token ${token}`
       },
-      body: JSON.stringify({ messages })
+      body: JSON.stringify({ prescription: prescription.trim() })
     });
-    const data = await res.json();
-    if (res.ok && data.reply) {
-      document.getElementById("aiSummary").textContent = data.reply;
+    
+    if (res.ok) {
+      showSuccess("Prescription saved successfully!");
+      loadDoctorDashboard(); // Refresh dashboard
     } else {
-      document.getElementById("aiSummary").textContent = data.detail || "Unable to summarize.";
+      const data = await res.json();
+      showError(data.error || "Failed to save prescription");
     }
-  } catch {
-    document.getElementById("aiSummary").textContent = "Error contacting AI.";
+  } catch (error) {
+    console.error("Quick prescription error:", error);
+    showError("Error saving prescription");
   }
 }
 
-function logout() {
-  localStorage.removeItem("authToken");
-  window.location.href = "login.html";
+// Show all patients (enhanced functionality)
+async function showAllPatients() {
+  try {
+    // This would ideally fetch from a dedicated patients API
+    const allPatients = new Set();
+    const patientData = [];
+    
+    // Extract unique patients from appointments
+    const allAppointments = [
+      ...(dashboardData.today || []),
+      ...(dashboardData.upcoming || []),
+      ...(dashboardData.past || [])
+    ];
+    
+    allAppointments.forEach(apt => {
+      if (apt.patient_name && !allPatients.has(apt.patient_name)) {
+        allPatients.add(apt.patient_name);
+        patientData.push({
+          name: apt.patient_name,
+          id: apt.patient_id,
+          lastVisit: apt.date,
+          totalAppointments: allAppointments.filter(a => a.patient_name === apt.patient_name).length
+        });
+      }
+    });
+    
+    // Sort by most recent visit
+    patientData.sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+    
+    let patientsInfo = `All Patients (${patientData.length} total)\n\n`;
+    patientData.forEach((patient, index) => {
+      patientsInfo += `${index + 1}. ${patient.name} (P-${patient.id})\n`;
+      patientsInfo += `   Last Visit: ${patient.lastVisit}\n`;
+      patientsInfo += `   Total Appointments: ${patient.totalAppointments}\n\n`;
+    });
+    
+    alert(patientsInfo || "No patients found in appointment records.");
+  } catch (error) {
+    showError("Error loading patient list");
+  }
 }
 
-// Chatbot
+// Show appointment statistics
+function showAppointmentStats() {
+  try {
+    const todayCount = dashboardData.today?.length || 0;
+    const upcomingCount = dashboardData.upcoming?.length || 0;
+    const pastCount = dashboardData.past?.length || 0;
+    const total = todayCount + upcomingCount + pastCount;
+    
+    // Calculate prescription completion rate
+    const pastWithPrescriptions = (dashboardData.past || []).filter(a => a.prescription).length;
+    const prescriptionRate = pastCount > 0 ? Math.round((pastWithPrescriptions / pastCount) * 100) : 0;
+    
+    // Get unique patients count
+    const uniquePatients = new Set([
+      ...(dashboardData.today || []).map(a => a.patient_name),
+      ...(dashboardData.upcoming || []).map(a => a.patient_name),
+      ...(dashboardData.past || []).map(a => a.patient_name)
+    ].filter(name => name)).size;
+    
+    const stats = `📊 Appointment Statistics\n\n` +
+      `Today: ${todayCount} appointments\n` +
+      `Upcoming: ${upcomingCount} appointments\n` +
+      `Past: ${pastCount} appointments\n` +
+      `Total: ${total} appointments\n\n` +
+      `👥 Unique Patients: ${uniquePatients}\n` +
+      `💊 Prescription Rate: ${prescriptionRate}% (${pastWithPrescriptions}/${pastCount})\n\n` +
+      `📅 Average per day: ${total > 0 ? Math.round(total / 30) : 0} (last 30 days estimate)`;
+    
+    alert(stats);
+  } catch (error) {
+    showError("Error calculating statistics");
+  }
+}
+
+// Logout
+function logout() {
+  if (confirm("Are you sure you want to logout?")) {
+    localStorage.removeItem("authToken");
+    showSuccess("Logged out successfully");
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 1000);
+  }
+}
+
+// Chatbot functionality
 const chatBtn = document.getElementById("chatbotBtn");
 const chatWin = document.getElementById("chatWindow");
 const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatText");
 const chatSend = document.getElementById("chatSend");
-let history = [];
+let chatHistory = [];
 
 chatBtn.addEventListener("click", () => {
-  chatWin.style.display = chatWin.style.display === "none" ? "flex" : "none";
+  const isVisible = chatWin.style.display === "flex";
+  chatWin.style.display = isVisible ? "none" : "flex";
+  
+  if (!isVisible && chatMessages.children.length === 0) {
+    // Add welcome message
+    addMsg("Hello Dr.! I'm your AI medical assistant. I can help you with:\n\n• Medical condition information\n• Treatment recommendations\n• Drug interactions\n• Diagnostic guidance\n• General medical queries\n\nHow can I assist you today?", "bot");
+  }
 });
 
 function addMsg(text, sender) {
@@ -225,9 +410,19 @@ function addMsg(text, sender) {
 async function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
+  
   addMsg(text, "user");
-  history.push({ role: "user", content: text });
+  chatHistory.push({ role: "user", content: text });
   chatInput.value = "";
+  
+  // Show typing indicator
+  const typingDiv = document.createElement("div");
+  typingDiv.className = "msg-bot";
+  typingDiv.innerHTML = "🤔 Thinking...";
+  typingDiv.id = "typing-indicator";
+  chatMessages.appendChild(typingDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
   try {
     const res = await fetch("http://127.0.0.1:8000/api/chat/", {
       method: "POST",
@@ -235,23 +430,59 @@ async function sendChat() {
         "Content-Type": "application/json",
         "Authorization": `Token ${token}`
       },
-      body: JSON.stringify({ messages: history })
+      body: JSON.stringify({ messages: chatHistory })
     });
+    
+    // Remove typing indicator
+    const typing = document.getElementById("typing-indicator");
+    if (typing) typing.remove();
+    
     const data = await res.json();
     if (res.ok && data.reply) {
       addMsg(data.reply, "bot");
-      history.push({ role: "assistant", content: data.reply });
+      chatHistory.push({ role: "assistant", content: data.reply });
     } else {
-      addMsg(data.detail || "Error: Unable to get response.", "bot");
+      addMsg(data.detail || "Sorry, I couldn't process your request. Please try again.", "bot");
     }
-  } catch {
-    addMsg("Error: Could not connect to chatbot.", "bot");
+  } catch (error) {
+    // Remove typing indicator
+    const typing = document.getElementById("typing-indicator");
+    if (typing) typing.remove();
+    
+    console.error("Chat error:", error);
+    addMsg("I'm having trouble connecting right now. Please check your internet connection and try again.", "bot");
   }
 }
 
 chatSend.addEventListener("click", sendChat);
-chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+chatInput.addEventListener("keydown", e => { 
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendChat();
+  }
+});
 
+// Initialize dashboard when page loads
+document.addEventListener("DOMContentLoaded", () => {
+  loadDoctorDashboard();
+  
+  // Add keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    // Ctrl+R to refresh dashboard
+    if (e.ctrlKey && e.key === "r") {
+      e.preventDefault();
+      loadDoctorDashboard();
+      showAlert("Dashboard refreshed", "success");
+    }
+  });
+});
+
+// Auto-refresh dashboard every 5 minutes
+setInterval(() => {
+  loadDoctorDashboard();
+}, 5 * 60 * 1000);
+
+// Initialize
 loadDoctorDashboard();
 </script>
 </body>
