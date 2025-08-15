@@ -1,164 +1,584 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hospital Management - Signup</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: linear-gradient(to right, #56ccf2, #2f80ed);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        margin: 0;
-    }
-    .signup-container {
-        background: white;
-        padding: 25px;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        width: 350px;
-    }
-    h2 {
-        text-align: center;
-        margin-bottom: 20px;
-        color: #2f80ed;
-    }
-    input, select, button {
-        width: 100%;
-        padding: 10px;
-        margin: 8px 0;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-    }
-    button {
-        background-color: #2f80ed;
-        color: white;
-        border: none;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    button:hover {
-        background-color: #1f5bb5;
-    }
-    .error {
-        color: red;
-        font-size: 0.9em;
-        text-align: center;
-    }
-    .login-link {
-        text-align: center;
-        margin-top: 12px;
-        font-size: 0.9em;
-    }
-    .login-link a {
-        color: #2f80ed;
-        text-decoration: none;
-        font-weight: bold;
-    }
-    .login-link a:hover {
-        text-decoration: underline;
-    }
-    #specializationContainer {
-        display: none;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Management - Sign Up</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .signup-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+            margin: 20px;
+        }
+
+        .signup-header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .signup-header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .signup-header p {
+            opacity: 0.9;
+            font-size: 1em;
+        }
+
+        .signup-form {
+            padding: 30px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            flex: 1;
+            margin-bottom: 20px;
+        }
+
+        .form-group.full-width {
+            flex: none;
+            width: 100%;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .role-selection {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .role-option {
+            flex: 1;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .role-option:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+
+        .role-option.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+
+        .role-option .role-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .role-option .role-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .role-option .role-desc {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .specialization-section {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .specialization-section.show {
+            display: block;
+        }
+
+        .specialization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .spec-option {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8em;
+            background: white;
+        }
+
+        .spec-option:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+
+        .spec-option.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+            color: #1976d2;
+            font-weight: 600;
+        }
+
+        .signup-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .signup-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+        }
+
+        .signup-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .login-link a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .login-link a:hover {
+            color: #2c3e50;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f44336;
+            font-size: 0.9em;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4caf50;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .password-requirements {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .role-selection {
+                flex-direction: column;
+            }
+            
+            .specialization-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+        }
+    </style>
 </head>
 <body>
-
-<div class="signup-container">
-    <h2>Create Account</h2>
-    <div class="error" id="errorMsg"></div>
-
-    <input type="text" id="username" placeholder="Username" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-
-    <select id="role" onchange="toggleSpecialization()">
-        <option value="patient">Patient</option>
-        <option value="doctor">Doctor</option>
-    </select>
-
-    <!-- Specialization dropdown for doctors -->
-    <div id="specializationContainer">
-        <select id="specialization">
-            <option value="">Select Specialization</option>
-            <option value="General">General</option>
-            <option value="Cardiology">Cardiology</option>
-            <option value="Dermatology">Dermatology</option>
-            <option value="Orthopedics">Orthopedics</option>
-            <option value="Pediatrics">Pediatrics</option>
-            <option value="Neurology">Neurology</option>
-            <option value="Psychiatry">Psychiatry</option>
-            <option value="Gynecology">Gynecology</option>
-            <option value="Urology">Urology</option>
-            <option value="Oncology">Oncology</option>
-            <option value="Endocrinology">Endocrinology</option>
-            <option value="Gastroenterology">Gastroenterology</option>
-            <option value="Pulmonology">Pulmonology</option>
-        </select>
+    <div class="signup-container">
+        <div class="signup-header">
+            <h1>🏥 Hospital Management</h1>
+            <p>Create your account to get started</p>
+        </div>
+        
+        <div class="signup-form">
+            <form id="signupForm">
+                <div id="messageContainer"></div>
+                
+                <!-- Personal Information -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">👤 First Name</label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">👤 Last Name</label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">🔤 Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">📧 Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">🔒 Password</label>
+                    <input type="password" id="password" name="password" required>
+                    <div class="password-requirements">
+                        Password must be at least 8 characters long
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">🔒 Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+                
+                <!-- Role Selection -->
+                <div class="form-group full-width">
+                    <label>👥 Select Your Role</label>
+                    <div class="role-selection">
+                        <div class="role-option" data-role="patient">
+                            <span class="role-icon">🏥</span>
+                            <div class="role-title">Patient</div>
+                            <div class="role-desc">Book appointments and manage health records</div>
+                        </div>
+                        <div class="role-option" data-role="doctor">
+                            <span class="role-icon">👨‍⚕️</span>
+                            <div class="role-title">Doctor</div>
+                            <div class="role-desc">Manage patients and provide medical care</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Doctor Specialization -->
+                <div class="specialization-section" id="specializationSection">
+                    <label>🏥 Select Your Specializations</label>
+                    <div class="specialization-grid" id="specializationGrid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <button type="submit" class="signup-btn" id="signupBtn">
+                    ✨ Create Account
+                </button>
+            </form>
+            
+            <div class="login-link">
+                <p>Already have an account? <a href="/frontend/login.html">Sign In</a></p>
+            </div>
+        </div>
     </div>
 
-    <button onclick="signup()">Sign Up</button>
+    <script>
+        let selectedRole = null;
+        let selectedSpecializations = [];
+        const specializations = [
+            "General", "Cardiology", "Dermatology", "Orthopedics", 
+            "Pediatrics", "Neurology", "Psychiatry", "Gynecology", 
+            "Urology", "Oncology", "Endocrinology", "Gastroenterology", "Pulmonology"
+        ];
 
-    <div class="login-link">
-        Already have an account? <a href="login.html">Login</a>
-    </div>
-</div>
-
-<script>
-function toggleSpecialization() {
-    const role = document.getElementById("role").value;
-    const specializationDiv = document.getElementById("specializationContainer");
-    specializationDiv.style.display = role === "doctor" ? "block" : "none";
-}
-
-async function signup() {
-    const username = document.getElementById("username").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const role = document.getElementById("role").value;
-    const specialization = role === "doctor" ? document.getElementById("specialization").value : "";
-
-    const errorMsg = document.getElementById("errorMsg");
-    errorMsg.textContent = "";
-
-    if (!username || !email || !password) {
-        errorMsg.textContent = "All fields are required.";
-        return;
-    }
-    if (role === "doctor" && !specialization) {
-        errorMsg.textContent = "Please select specialization.";
-        return;
-    }
-
-    try {
-        const payload = { username, email, password, role };
-        if (role === "doctor") {
-            payload.specialization = [specialization]; // send as list
-        }
-
-        const response = await fetch("http://127.0.0.1:8000/api/signup/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+        document.addEventListener('DOMContentLoaded', function() {
+            setupRoleSelection();
+            setupSpecializationGrid();
+            setupFormValidation();
+            
+            document.getElementById('signupForm').addEventListener('submit', handleSignup);
         });
 
-        const data = await response.json();
-
-        if (response.ok) {
-            alert("Signup successful! Please login.");
-            window.location.href = "login.html";
-        } else {
-            errorMsg.textContent = data.error || data.detail || "Signup failed!";
+        function setupRoleSelection() {
+            const roleOptions = document.querySelectorAll('.role-option');
+            
+            roleOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    // Remove previous selection
+                    roleOptions.forEach(opt => opt.classList.remove('selected'));
+                    
+                    // Add selection to clicked option
+                    this.classList.add('selected');
+                    selectedRole = this.dataset.role;
+                    
+                    // Show/hide specialization section
+                    const specializationSection = document.getElementById('specializationSection');
+                    if (selectedRole === 'doctor') {
+                        specializationSection.classList.add('show');
+                    } else {
+                        specializationSection.classList.remove('show');
+                        selectedSpecializations = [];
+                        updateSpecializationSelection();
+                    }
+                });
+            });
         }
-    } catch (error) {
-        errorMsg.textContent = "Error connecting to server.";
-    }
-}
-</script>
 
+        function setupSpecializationGrid() {
+            const grid = document.getElementById('specializationGrid');
+            
+            grid.innerHTML = specializations.map(spec => 
+                `<div class="spec-option" data-spec="${spec}">${spec}</div>`
+            ).join('');
+            
+            // Add click handlers
+            const specOptions = grid.querySelectorAll('.spec-option');
+            specOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    const spec = this.dataset.spec;
+                    
+                    if (selectedSpecializations.includes(spec)) {
+                        // Remove specialization
+                        selectedSpecializations = selectedSpecializations.filter(s => s !== spec);
+                        this.classList.remove('selected');
+                    } else {
+                        // Add specialization
+                        selectedSpecializations.push(spec);
+                        this.classList.add('selected');
+                    }
+                });
+            });
+        }
+
+        function updateSpecializationSelection() {
+            const specOptions = document.querySelectorAll('.spec-option');
+            specOptions.forEach(option => {
+                if (selectedSpecializations.includes(option.dataset.spec)) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+        }
+
+        function setupFormValidation() {
+            const confirmPassword = document.getElementById('confirmPassword');
+            const password = document.getElementById('password');
+            
+            confirmPassword.addEventListener('blur', function() {
+                if (this.value && this.value !== password.value) {
+                    showMessage('Passwords do not match', 'error');
+                }
+            });
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = {
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                username: document.getElementById('username').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirmPassword').value,
+                role: selectedRole
+            };
+            
+            // Validation
+            if (!validateForm(formData)) {
+                return;
+            }
+            
+            const signupBtn = document.getElementById('signupBtn');
+            signupBtn.disabled = true;
+            signupBtn.innerHTML = '<span class="loading"></span>Creating Account...';
+
+            try {
+                const requestData = {
+                    username: formData.username,
+                    password: formData.password,
+                    email: formData.email,
+                    first_name: formData.firstName,
+                    last_name: formData.lastName,
+                    role: formData.role
+                };
+                
+                if (formData.role === 'doctor') {
+                    requestData.specialization = selectedSpecializations;
+                }
+
+                const response = await fetch('/api/signup/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('✅ Account created successfully! Redirecting to login...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/frontend/login.html';
+                    }, 2000);
+                    
+                } else {
+                    showMessage(data.error || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                showMessage('Network error. Please try again.', 'error');
+            } finally {
+                signupBtn.disabled = false;
+                signupBtn.innerHTML = '✨ Create Account';
+            }
+        }
+
+        function validateForm(data) {
+            // Check required fields
+            if (!data.firstName || !data.lastName || !data.username || !data.email || !data.password) {
+                showMessage('Please fill in all required fields', 'error');
+                return false;
+            }
+            
+            // Check role selection
+            if (!selectedRole) {
+                showMessage('Please select your role (Patient or Doctor)', 'error');
+                return false;
+            }
+            
+            // Check doctor specializations
+            if (selectedRole === 'doctor' && selectedSpecializations.length === 0) {
+                showMessage('Please select at least one specialization', 'error');
+                return false;
+            }
+            
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(data.email)) {
+                showMessage('Please enter a valid email address', 'error');
+                return false;
+            }
+            
+            // Validate username (alphanumeric and underscores only)
+            const usernameRegex = /^[a-zA-Z0-9_]+$/;
+            if (!usernameRegex.test(data.username)) {
+                showMessage('Username can only contain letters, numbers, and underscores', 'error');
+                return false;
+            }
+            
+            // Check password length
+            if (data.password.length < 8) {
+                showMessage('Password must be at least 8 characters long', 'error');
+                return false;
+            }
+            
+            // Check password confirmation
+            if (data.password !== data.confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageClass = type === 'error' ? 'error-message' : 'success-message';
+            
+            container.innerHTML = `<div class="${messageClass}">${message}</div>`;
+            
+            // Scroll to top to show message
+            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            // Auto-hide success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            }
+        }
+    </script>
 </body>
 </html>

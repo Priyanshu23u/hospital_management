@@ -18,23 +18,32 @@ urlpatterns = [
     # =======================
     # Appointment Management
     # =======================
-    path('appointment/<int:appointment_id>/cancel/', views.cancel_appointment, name='cancel_appointment'),
-    path('appointment/<int:appointment_id>/update/', views.update_appointment, name='update_appointment'),
-    path('appointment/<int:appointment_id>/prescription/', views.view_prescription, name='view_prescription'),
+    path('appointment/<int:pk>/cancel/', views.cancel_appointment, name='cancel_appointment'),
+    path('appointment/<int:pk>/update/', views.update_appointment, name='update_appointment'),
+    path('appointment/<int:pk>/prescription/', views.view_prescription, name='view_prescription'),
 
     # =======================
     # Doctor Search & Filter
     # =======================
     path('doctors/by-specialization/', views.get_doctors_by_specialization, name='get_doctors_by_specialization'),
     path("doctors/", views.DoctorListView.as_view(), name="doctor-list"),
-    # ✅ ADD: Frontend expects this endpoint for specializations
     path("doctors/specializations/", views.SpecializationListView.as_view(), name="specializations-list"),
-    # Add this to your urlpatterns in urls.py
+
+    # =======================
+    # Doctor Patient Management
+    # =======================
     path('doctor/patient/<str:username>/', views.DoctorPatientDetailView.as_view(), name='doctor-patient-detail'),
     path('save-prescription/', views.SavePrescriptionView.as_view(), name='save-prescription'),
     path('patient-history-summary/', views.PatientHistorySummaryView.as_view(), name='patient-history-summary'),
-# Add this to your existing urlpatterns
+
+    # =======================
+    # Document Management
+    # =======================
+    path("documents/upload/", views.DocumentUploadView.as_view(), name="document-upload"),
+    path("documents/", views.DocumentUploadView.as_view(), name="document-list"),  # GET for listing
     path('patients/<str:username>/documents/', views.get_patient_documents, name='patient-documents'),
+    path('patient/<int:patient_id>/documents/', views.PatientDocumentsView.as_view(), name='patient-documents-by-id'),
+    path('my-documents/', views.PatientDocumentsView.as_view(), name='my-documents'),
 
     # =======================
     # Users CRUD
@@ -50,15 +59,12 @@ urlpatterns = [
     path("appointments/<int:pk>/", views.AppointmentDetailView.as_view(), name="appointment-detail"),
 
     # =======================
-    # Document Upload
-    # =======================
-    # ✅ ADD: Frontend expects this endpoint for document uploads
-    path("documents/upload/", views.DocumentUploadView.as_view(), name="document-upload"),
-
-    # =======================
     # AI Features
     # =======================
     path("chatbot/", views.ChatbotView.as_view(), name="chatbot"),
     path("summarize-history/", views.HistorySummarizerView.as_view(), name="history-summarizer"),
     path("chat/", views.chat_with_ai, name="chat_with_ai"),
+    # Add this line to your existing urlpatterns in app/urls.py
+    path('my-prescriptions/', views.PatientPrescriptionsView.as_view(), name='my-prescriptions'),
+
 ]

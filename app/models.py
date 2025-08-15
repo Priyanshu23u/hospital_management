@@ -40,11 +40,13 @@ class Appointment(models.Model):
         ('cancelled', 'Cancelled'),
         ('completed', 'Completed'),
     ]
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     date = models.DateField()
     slot = models.TimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='booked')
+    prescription = models.TextField(blank=True, null=True)  # Added for backward compatibility
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -60,7 +62,7 @@ class VisitNote(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     visit_date = models.DateTimeField(auto_now_add=True)
     notes = models.TextField()
-    prescription = models.FileField(upload_to='prescriptions/', null=True, blank=True)  # File upload
+    prescription = models.FileField(upload_to='prescriptions/', null=True, blank=True)
 
     def __str__(self):
         return f"Note for {self.patient} by {self.doctor} on {self.visit_date}"
@@ -73,11 +75,16 @@ class Document(models.Model):
         ('prescription', 'Prescription'),
         ('other', 'Other'),
     ]
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, null=True, blank=True)  # link to booking
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, null=True, blank=True)
     file = models.FileField(upload_to='documents/')
     doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES, default='other')
+    description = models.CharField(max_length=255, blank=True, null=True)  # Added description field
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.doc_type} for {self.patient}"
+
+    class Meta:
+        ordering = ['-uploaded_at']
