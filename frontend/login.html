@@ -92,7 +92,7 @@
             margin-bottom: 20px;
         }
 
-        .login-btn:hover {
+        .login-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
         }
@@ -162,23 +162,33 @@
             margin-bottom: 20px;
             font-size: 0.9em;
             color: #666;
+            border: 1px solid #e0e0e0;
         }
 
         .demo-credentials h4 {
             color: #2c3e50;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 1em;
         }
 
-        .demo-credentials p {
-            margin: 5px 0;
+        .demo-credentials .cred-item {
+            margin: 8px 0;
             cursor: pointer;
-            padding: 5px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            background: white;
         }
 
-        .demo-credentials p:hover {
+        .demo-credentials .cred-item:hover {
             background-color: #e3f2fd;
+            border-color: #3498db;
+            transform: translateY(-1px);
+        }
+
+        .demo-credentials .cred-item strong {
+            color: #2c3e50;
         }
 
         .debug-info {
@@ -189,8 +199,35 @@
             margin-bottom: 20px;
             font-family: monospace;
             font-size: 0.8em;
-            max-height: 100px;
+            max-height: 150px;
             overflow-y: auto;
+            display: none;
+        }
+
+        .manual-navigation {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .manual-navigation a {
+            display: inline-block;
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .manual-navigation a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
         }
 
         @media (max-width: 480px) {
@@ -217,16 +254,20 @@
         
         <div class="login-form">
             <!-- Debug Information -->
-            <div class="debug-info" id="debugInfo" style="display: none;">
+            <div class="debug-info" id="debugInfo">
                 <strong>Debug Log:</strong><br>
                 <div id="debugLog"></div>
             </div>
 
             <!-- Demo Credentials -->
             <div class="demo-credentials">
-                <h4>🔑 Demo Credentials (Click to Use):</h4>
-                <p onclick="fillCredentials('doctor1', 'password123')"><strong>Doctor:</strong> doctor1 / password123</p>
-                <p onclick="fillCredentials('patient1', 'password123')"><strong>Patient:</strong> patient1 / password123</p>
+                <h4>🧪 Demo Accounts</h4>
+                <div class="cred-item" onclick="fillCredentials('doctor1', 'testpass123')">
+                    <strong>👨‍⚕️ Doctor:</strong> Doctor1 / 12345678
+                </div>
+                <div class="cred-item" onclick="fillCredentials('patient1', 'testpass123')">
+                    <strong>🏥 Patient:</strong> Patient1 / 12345678
+                </div>
             </div>
 
             <form id="loginForm">
@@ -289,6 +330,15 @@
             document.getElementById('username').value = username;
             document.getElementById('password').value = password;
             debugLog(`Filled credentials for: ${username}`);
+            
+            // Add visual feedback
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.style.borderColor = '#27ae60';
+                setTimeout(() => {
+                    input.style.borderColor = '#e0e0e0';
+                }, 1000);
+            });
         }
 
         async function handleLogin(e) {
@@ -332,28 +382,37 @@
                 if (response.ok) {
                     debugLog('Login successful, storing data and redirecting...');
                     
-                    // Store authentication data
+                    // Clear any existing authentication data first
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('role');
+                    localStorage.removeItem('username');
+                    
+                    // Store new authentication data
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
                     localStorage.setItem('username', data.username || username);
                     
                     debugLog(`Stored - Token: ${data.token ? 'Present' : 'Missing'}, Role: ${data.role}, Username: ${data.username || username}`);
                     
+                    // Verify storage
+                    const storedRole = localStorage.getItem('role');
+                    debugLog(`Verification - Stored role: ${storedRole}`);
+                    
                     showMessage('✅ Login successful! Redirecting...', 'success');
                     
-                    // Immediate redirect (no timeout)
+                    // Redirect based on role with a short delay
                     setTimeout(() => {
                         redirectBasedOnRole(data.role);
-                    }, 500); // Reduced timeout
+                    }, 1000);
                     
                 } else {
                     debugLog(`Login failed: ${data.error || 'Unknown error'}`);
-                    showMessage(data.error || 'Login failed', 'error');
+                    showMessage(data.error || 'Login failed. Please check your credentials.', 'error');
                 }
             } catch (error) {
                 debugLog(`Network error: ${error.message}`);
                 console.error('Login error:', error);
-                showMessage('Network error. Please try again.', 'error');
+                showMessage('Network error. Please check your connection and try again.', 'error');
             } finally {
                 // Reset button state
                 loginBtn.disabled = false;
@@ -364,59 +423,73 @@
         function redirectBasedOnRole(role) {
             debugLog(`Redirecting based on role: ${role}`);
             
+            // Clear message container first
+            document.getElementById('messageContainer').innerHTML = '';
+            
             // Ensure role is a string and normalize it
             const normalizedRole = String(role).trim().toLowerCase();
             debugLog(`Normalized role: ${normalizedRole}`);
             
             let redirectUrl;
+            let dashboardName;
             
             if (normalizedRole === 'doctor') {
                 redirectUrl = '/frontend/doctor_dashboard.html';
+                dashboardName = 'Doctor Dashboard';
             } else if (normalizedRole === 'patient') {
                 redirectUrl = '/frontend/patient_dashboard.html';
+                dashboardName = 'Patient Dashboard';
             } else {
                 debugLog(`Unknown role: ${role}`);
-                showMessage(`Unknown user role: ${role}`, 'error');
+                showMessage(`Unknown user role: ${role}. Please contact support.`, 'error');
                 return;
             }
             
             debugLog(`Redirecting to: ${redirectUrl}`);
             
-            // Try multiple redirect methods
+            // Show success message with manual navigation option
+            showMessage(`✅ Welcome ${normalizedRole}! Redirecting to ${dashboardName}...`, 'success');
+            
+            // Add manual navigation as backup
+            setTimeout(() => {
+                showManualNavigation(normalizedRole, redirectUrl, dashboardName);
+            }, 2000);
+            
+            // Try redirect with multiple methods
             try {
-                // Method 1: Direct assignment
-                window.location.href = redirectUrl;
+                // Method 1: Direct assignment (most reliable)
+                setTimeout(() => {
+                    debugLog('Attempting redirect via href assignment');
+                    window.location.href = redirectUrl;
+                }, 1500);
                 
                 // Method 2: Replace (fallback)
                 setTimeout(() => {
+                    debugLog('Attempting redirect via replace');
                     window.location.replace(redirectUrl);
-                }, 1000);
-                
-                // Method 3: Assign (another fallback)
-                setTimeout(() => {
-                    window.location.assign(redirectUrl);
-                }, 2000);
+                }, 3000);
                 
             } catch (redirectError) {
                 debugLog(`Redirect error: ${redirectError.message}`);
-                showMessage('Redirect failed. Please navigate manually.', 'error');
-                
-                // Show manual navigation links
-                showManualNavigation(role);
+                showMessage('Automatic redirect failed. Please use the manual navigation below.', 'error');
+                showManualNavigation(normalizedRole, redirectUrl, dashboardName);
             }
         }
 
-        function showManualNavigation(role) {
+        function showManualNavigation(role, url, dashboardName) {
             const container = document.getElementById('messageContainer');
-            const links = role === 'doctor' 
-                ? '<a href="/frontend/doctor_dashboard.html" style="color: #3498db;">Go to Doctor Dashboard</a>'
-                : '<a href="/frontend/patient_dashboard.html" style="color: #3498db;">Go to Patient Dashboard</a>';
             
-            container.innerHTML += `
-                <div class="success-message">
-                    Login successful! ${links}
+            const manualNavHtml = `
+                <div class="manual-navigation">
+                    <p style="margin-bottom: 10px;"><strong>If redirect doesn't work, click below:</strong></p>
+                    <a href="${url}" onclick="debugLog('Manual navigation clicked')">
+                        Go to ${dashboardName} →
+                    </a>
                 </div>
             `;
+            
+            container.innerHTML += manualNavHtml;
+            debugLog(`Manual navigation shown for: ${role}`);
         }
 
         function showMessage(message, type) {
@@ -427,8 +500,8 @@
             
             debugLog(`Message shown: ${type} - ${message}`);
             
-            // Auto-hide success messages
-            if (type === 'success') {
+            // Auto-hide success messages (except for redirect messages)
+            if (type === 'success' && !message.includes('Redirecting')) {
                 setTimeout(() => {
                     if (container.innerHTML.includes(message)) {
                         container.innerHTML = '';
@@ -438,6 +511,9 @@
         }
 
         function debugLog(message, data = null) {
+            // Always log to console for development
+            console.log(`[Login Debug] ${message}`, data || '');
+            
             if (!debugMode) return;
             
             const timestamp = new Date().toLocaleTimeString();
@@ -450,9 +526,6 @@
             
             logContainer.innerHTML += logMessage + '<br>';
             logContainer.scrollTop = logContainer.scrollHeight;
-            
-            // Also log to console
-            console.log(`[Login Debug] ${message}`, data || '');
         }
 
         function toggleDebug() {
@@ -475,30 +548,35 @@
             }
         });
 
-        // Additional debugging - log all localStorage changes
+        // Enhanced localStorage monitoring
         const originalSetItem = localStorage.setItem;
         localStorage.setItem = function(key, value) {
             debugLog(`LocalStorage set: ${key} = ${value}`);
             return originalSetItem.apply(this, arguments);
         };
 
-        // Log navigation attempts
-        const originalAssign = window.location.assign;
-        const originalReplace = window.location.replace;
-        
-        if (originalAssign) {
-            window.location.assign = function(url) {
-                debugLog(`Navigation attempt (assign): ${url}`);
-                return originalAssign.call(this, url);
-            };
-        }
-        
-        if (originalReplace) {
-            window.location.replace = function(url) {
-                debugLog(`Navigation attempt (replace): ${url}`);
-                return originalReplace.call(this, url);
-            };
-        }
+        // Monitor page visibility changes (helps debug navigation issues)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                debugLog('Page hidden - navigation may be in progress');
+            } else {
+                debugLog('Page visible - user returned or navigation failed');
+            }
+        });
+
+        // Monitor beforeunload (page leaving)
+        window.addEventListener('beforeunload', function() {
+            debugLog('Page unloading - navigation successful');
+        });
+
+        // Error handling for navigation failures
+        window.addEventListener('error', function(e) {
+            debugLog(`Page error: ${e.message}`, { 
+                filename: e.filename, 
+                lineno: e.lineno, 
+                colno: e.colno 
+            });
+        });
     </script>
 </body>
 </html>

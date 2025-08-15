@@ -54,19 +54,11 @@
             overflow-y: auto;
         }
 
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
         .form-group {
-            flex: 1;
             margin-bottom: 20px;
         }
 
         .form-group.full-width {
-            flex: none;
             width: 100%;
         }
 
@@ -261,12 +253,18 @@
             margin-top: 5px;
         }
 
+        .debug-info {
+            background: #f0f8ff;
+            border: 1px solid #cce0ff;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 0.8em;
+            display: none;
+        }
+
         @media (max-width: 600px) {
-            .form-row {
-                flex-direction: column;
-                gap: 0;
-            }
-            
             .role-selection {
                 flex-direction: column;
             }
@@ -286,20 +284,15 @@
         
         <div class="signup-form">
             <form id="signupForm">
+                <!-- Debug Information -->
+                <div class="debug-info" id="debugInfo">
+                    <strong>Debug:</strong><br>
+                    <div id="debugLog"></div>
+                </div>
+
                 <div id="messageContainer"></div>
                 
-                <!-- Personal Information -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="firstName">👤 First Name</label>
-                        <input type="text" id="firstName" name="firstName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="lastName">👤 Last Name</label>
-                        <input type="text" id="lastName" name="lastName" required>
-                    </div>
-                </div>
-                
+                <!-- Basic Information -->
                 <div class="form-group">
                     <label for="username">🔤 Username</label>
                     <input type="text" id="username" name="username" required>
@@ -356,24 +349,28 @@
             <div class="login-link">
                 <p>Already have an account? <a href="/frontend/login.html">Sign In</a></p>
             </div>
+
+            <!-- Debug Toggle -->
+            <div style="text-align: center; margin-top: 15px;">
+                <button type="button" onclick="toggleDebug()" style="background: none; border: none; color: #666; font-size: 0.7em; cursor: pointer;">
+                    Show Debug
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         let selectedRole = null;
         let selectedSpecializations = [];
-        const specializations = [
-            "General", "Cardiology", "Dermatology", "Orthopedics", 
-            "Pediatrics", "Neurology", "Psychiatry", "Gynecology", 
-            "Urology", "Oncology", "Endocrinology", "Gastroenterology", "Pulmonology"
-        ];
+        let debugMode = false;
 
         document.addEventListener('DOMContentLoaded', function() {
             setupRoleSelection();
-            setupSpecializationGrid();
+            loadSpecializations();
             setupFormValidation();
             
             document.getElementById('signupForm').addEventListener('submit', handleSignup);
+            debugLog('Page loaded, signup form ready');
         });
 
         function setupRoleSelection() {
@@ -388,20 +385,52 @@
                     this.classList.add('selected');
                     selectedRole = this.dataset.role;
                     
+                    debugLog(`Role selected: ${selectedRole}`);
+                    
                     // Show/hide specialization section
                     const specializationSection = document.getElementById('specializationSection');
                     if (selectedRole === 'doctor') {
                         specializationSection.classList.add('show');
+                        debugLog('Showing specialization section');
                     } else {
                         specializationSection.classList.remove('show');
                         selectedSpecializations = [];
                         updateSpecializationSelection();
+                        debugLog('Hidden specialization section');
                     }
                 });
             });
         }
 
-        function setupSpecializationGrid() {
+        async function loadSpecializations() {
+            try {
+                debugLog('Loading specializations from API...');
+                const response = await fetch('/api/specializations/');
+                if (response.ok) {
+                    const specializations = await response.json();
+                    debugLog(`Loaded ${specializations.length} specializations from API`);
+                    setupSpecializationGrid(specializations);
+                } else {
+                    debugLog('API failed, using fallback specializations');
+                    const fallbackSpecializations = [
+                        "General", "Cardiology", "Dermatology", "Orthopedics", 
+                        "Pediatrics", "Neurology", "Psychiatry", "Gynecology", 
+                        "Urology", "Oncology", "Endocrinology", "Gastroenterology", "Pulmonology"
+                    ];
+                    setupSpecializationGrid(fallbackSpecializations);
+                }
+            } catch (error) {
+                debugLog(`Error loading specializations: ${error.message}`);
+                const fallbackSpecializations = [
+                    "General", "Cardiology", "Dermatology", "Orthopedics", 
+                    "Pediatrics", "Neurology", "Psychiatry", "Gynecology", 
+                    "Urology", "Oncology", "Endocrinology", "Gastroenterology", "Pulmonology"
+                ];
+                setupSpecializationGrid(fallbackSpecializations);
+            }
+        }
+
+        function setupSpecializationGrid(specializations) {
             const grid = document.getElementById('specializationGrid');
             
             grid.innerHTML = specializations.map(spec => 
@@ -418,11 +447,15 @@
                         // Remove specialization
                         selectedSpecializations = selectedSpecializations.filter(s => s !== spec);
                         this.classList.remove('selected');
+                        debugLog(`Removed specialization: ${spec}`);
                     } else {
                         // Add specialization
                         selectedSpecializations.push(spec);
                         this.classList.add('selected');
+                        debugLog(`Added specialization: ${spec}`);
                     }
+                    
+                    debugLog(`Selected specializations: [${selectedSpecializations.join(', ')}]`);
                 });
             });
         }
@@ -454,8 +487,6 @@
             
             // Get form data
             const formData = {
-                firstName: document.getElementById('firstName').value.trim(),
-                lastName: document.getElementById('lastName').value.trim(),
                 username: document.getElementById('username').value.trim(),
                 email: document.getElementById('email').value.trim(),
                 password: document.getElementById('password').value,
@@ -463,8 +494,12 @@
                 role: selectedRole
             };
             
+            debugLog(`Signup attempt - Username: ${formData.username}, Email: ${formData.email}, Role: ${formData.role}`);
+            debugLog(`Selected specializations: [${selectedSpecializations.join(', ')}]`);
+            
             // Validation
             if (!validateForm(formData)) {
+                debugLog('Form validation failed');
                 return;
             }
             
@@ -477,14 +512,14 @@
                     username: formData.username,
                     password: formData.password,
                     email: formData.email,
-                    first_name: formData.firstName,
-                    last_name: formData.lastName,
                     role: formData.role
                 };
                 
                 if (formData.role === 'doctor') {
                     requestData.specialization = selectedSpecializations;
                 }
+
+                debugLog('Sending signup request...', requestData);
 
                 const response = await fetch('/api/signup/', {
                     method: 'POST',
@@ -494,19 +529,31 @@
                     body: JSON.stringify(requestData)
                 });
 
+                debugLog(`Response status: ${response.status}`);
                 const data = await response.json();
+                debugLog('Response data:', data);
 
                 if (response.ok) {
+                    debugLog('Signup successful!');
                     showMessage('✅ Account created successfully! Redirecting to login...', 'success');
+                    
+                    // Clear form
+                    document.getElementById('signupForm').reset();
+                    selectedRole = null;
+                    selectedSpecializations = [];
+                    document.querySelectorAll('.role-option').forEach(opt => opt.classList.remove('selected'));
+                    document.getElementById('specializationSection').classList.remove('show');
                     
                     setTimeout(() => {
                         window.location.href = '/frontend/login.html';
                     }, 2000);
                     
                 } else {
+                    debugLog(`Signup failed: ${data.error}`);
                     showMessage(data.error || 'Registration failed', 'error');
                 }
             } catch (error) {
+                debugLog(`Network error: ${error.message}`);
                 console.error('Signup error:', error);
                 showMessage('Network error. Please try again.', 'error');
             } finally {
@@ -517,20 +564,23 @@
 
         function validateForm(data) {
             // Check required fields
-            if (!data.firstName || !data.lastName || !data.username || !data.email || !data.password) {
+            if (!data.username || !data.email || !data.password) {
                 showMessage('Please fill in all required fields', 'error');
+                debugLog('Validation failed: Missing required fields');
                 return false;
             }
             
             // Check role selection
             if (!selectedRole) {
                 showMessage('Please select your role (Patient or Doctor)', 'error');
+                debugLog('Validation failed: No role selected');
                 return false;
             }
             
             // Check doctor specializations
             if (selectedRole === 'doctor' && selectedSpecializations.length === 0) {
                 showMessage('Please select at least one specialization', 'error');
+                debugLog('Validation failed: Doctor needs specializations');
                 return false;
             }
             
@@ -538,6 +588,7 @@
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(data.email)) {
                 showMessage('Please enter a valid email address', 'error');
+                debugLog('Validation failed: Invalid email format');
                 return false;
             }
             
@@ -545,21 +596,25 @@
             const usernameRegex = /^[a-zA-Z0-9_]+$/;
             if (!usernameRegex.test(data.username)) {
                 showMessage('Username can only contain letters, numbers, and underscores', 'error');
+                debugLog('Validation failed: Invalid username format');
                 return false;
             }
             
             // Check password length
             if (data.password.length < 8) {
                 showMessage('Password must be at least 8 characters long', 'error');
+                debugLog('Validation failed: Password too short');
                 return false;
             }
             
             // Check password confirmation
             if (data.password !== data.confirmPassword) {
                 showMessage('Passwords do not match', 'error');
+                debugLog('Validation failed: Passwords do not match');
                 return false;
             }
             
+            debugLog('Form validation passed');
             return true;
         }
 
@@ -572,6 +627,8 @@
             // Scroll to top to show message
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             
+            debugLog(`Message shown: ${type} - ${message}`);
+            
             // Auto-hide success messages
             if (type === 'success') {
                 setTimeout(() => {
@@ -579,6 +636,44 @@
                 }, 5000);
             }
         }
+
+        function debugLog(message, data = null) {
+            // Always log to console
+            console.log(`[Signup Debug] ${message}`, data || '');
+            
+            if (!debugMode) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const logContainer = document.getElementById('debugLog');
+            
+            let logMessage = `[${timestamp}] ${message}`;
+            if (data) {
+                logMessage += `<br>&nbsp;&nbsp;Data: ${JSON.stringify(data)}`;
+            }
+            
+            logContainer.innerHTML += logMessage + '<br>';
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.style.display = debugMode ? 'block' : 'none';
+            
+            if (debugMode) {
+                debugLog('Debug mode enabled');
+            }
+            
+            event.target.textContent = debugMode ? 'Hide Debug' : 'Show Debug';
+        }
+
+        // Handle Enter key press
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+                document.getElementById('signupForm').dispatchEvent(new Event('submit'));
+            }
+        });
     </script>
 </body>
 </html>

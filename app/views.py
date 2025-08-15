@@ -12,6 +12,7 @@ from .serializers import (
     AppointmentSerializer, DoctorSerializer, DocumentSerializer, 
     UserSerializer, ProfileSerializer, PatientSerializer, VisitNoteSerializer
 )
+from django.contrib.auth import get_user_model
 from datetime import datetime, time, timedelta, date
 from groq import Groq
 from rest_framework.decorators import api_view, permission_classes
@@ -21,6 +22,7 @@ import os
 from dotenv import load_dotenv
 from .prompts import DOCTOR_SYSTEM_PROMPT, PATIENT_SYSTEM_PROMPT, HISTORY_SUMMARY_INSTRUCTION
 from .ai_groq import chat_with_groq
+from django.db import IntegrityError
 
 load_dotenv()
 
@@ -49,9 +51,17 @@ class StandardResultsSetPagination(PageNumberPagination):
 # AUTHENTICATION
 # ---------------------------
 
+from django.db import transaction
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import permissions
+from django.db import IntegrityError
+
 SPECIALIZATION_CHOICES = [
     "General",
-    "Cardiology",
+    "Cardiology", 
     "Dermatology",
     "Orthopedics",
     "Pediatrics",
@@ -69,16 +79,26 @@ class SignupView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        email = request.data.get("email")
-        first_name = request.data.get("first_name", "")
-        last_name = request.data.get("last_name", "")
-        role = request.data.get("role")
+        username = request.data.get("username", "").strip()
+        password = request.data.get("password", "").strip()
+        email = request.data.get("email", "").strip().lower()
+        role = request.data.get("role", "").strip()
+
+        # Basic validation
+        if not username or not password or not email or not role:
+            return Response({"error": "All fields are required."}, status=400)
 
         if role not in ["doctor", "patient"]:
             return Response({"error": "Role must be 'doctor' or 'patient'."}, status=400)
 
+        # Check for existing users
+        if User.objects.filter(username__iexact=username).exists():
+            return Response({"error": "Username already exists."}, status=400)
+        
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({"error": "Email already exists."}, status=400)
+
+        # Handle doctor specialization
         if role == "doctor":
             specializations = request.data.get("specialization", [])
             if not specializations:
@@ -96,40 +116,48 @@ class SignupView(APIView):
             specializations_str = None
 
         try:
-            # Check if user already exists
-            if User.objects.filter(username=username).exists():
-                return Response({"error": "Username already exists"}, status=400)
+            with transaction.atomic():
+                # Create user
+                user = User.objects.create_user(
+                    username=username, 
+                    password=password, 
+                    email=email
+                )
+                
+                # Create profile using get_or_create to avoid duplicates
+                profile, created = Profile.objects.get_or_create(
+                    user=user,
+                    defaults={'role': role}
+                )
+                
+                # If profile already existed, update the role
+                if not created:
+                    profile.role = role
+                    profile.save()
+
+                # Create role-specific models
+                if role == "doctor":
+                    Doctor.objects.get_or_create(
+                        profile=profile,
+                        defaults={'specialization': specializations_str}
+                    )
+                else:
+                    Patient.objects.get_or_create(profile=profile)
+
+                # Create authentication token
+                token, _ = Token.objects.get_or_create(user=user)
+
+                return Response({
+                    "message": "User registered successfully",
+                    "token": token.key,
+                    "role": profile.role,
+                    "username": user.username
+                }, status=201)
             
-            if User.objects.filter(email=email).exists():
-                return Response({"error": "Email already exists"}, status=400)
-
-            # Create user
-            user = User.objects.create_user(
-                username=username, 
-                password=password, 
-                email=email,
-                first_name=first_name,
-                last_name=last_name
-            )
-            profile = Profile.objects.create(user=user, role=role)
-
-            # Create related record
-            if role == "doctor":
-                Doctor.objects.create(profile=profile, specialization=specializations_str)
-            else:
-                Patient.objects.create(profile=profile)
-
-            token, _ = Token.objects.get_or_create(user=user)
-
-            return Response({
-                "message": "User registered successfully",
-                "token": token.key,
-                "role": role,
-                "username": username
-            }, status=201)
-
+        except IntegrityError as e:
+            return Response({"error": "Username or email already exists."}, status=400)
         except Exception as e:
-            return Response({"error": str(e)}, status=500)
+            return Response({"error": f"Registration failed: {str(e)}"}, status=500)
 
 class SpecializationListView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -1080,11 +1108,27 @@ class HistorySummarizerView(APIView):
             return Response({"summary": summary})
         except Exception as e:
             return Response({"error": f"AI service error: {str(e)}"}, status=500)
+def groq_chat(messages, temperature=0.6, max_tokens=600):
+    """
+    Low-level helper to call Groq with a list of {role, content} messages.
+    Returns the assistant's reply (string).
+    """
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    completion = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return completion.choices[0].message.content
+
+
+User = get_user_model()
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def chat_with_ai(request):
     try:
-        # Get messages from request (this is what your working HTML sends)
         messages = request.data.get("messages", [])
         if not isinstance(messages, list) or not messages:
             return Response({"detail": "Provide 'messages' as a non-empty list."}, status=400)
@@ -1097,18 +1141,53 @@ def chat_with_ai(request):
         else:
             system_prompt = "You are a helpful assistant."
 
-        # Ensure system prompt is first
         full_messages = [{"role": "system", "content": system_prompt}] + messages
-        
-        # Call groq_chat function
-        reply =chat_with_groq(full_messages, temperature=0.6, max_tokens=600)
-        
-        # Return "reply" field to match your working frontend
+        reply = groq_chat(full_messages, temperature=0.6, max_tokens=600)
         return Response({"reply": reply})
-        
     except Exception as e:
         return Response({"detail": str(e)}, status=500)
 
+class ChatbotView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        message = request.data.get("message", "").strip()
+        history = request.data.get("history", [])
+
+        if not message:
+            return Response({"error": "Message is required"}, status=400)
+
+        role = request.user.profile.role.lower()
+
+        if role == "doctor":
+            try:
+                Doctor.objects.get(profile__user=request.user)
+            except Doctor.DoesNotExist:
+                return Response({"error": "Doctor profile not found"}, status=404)
+            system_prompt = DOCTOR_SYSTEM_PROMPT
+
+        elif role == "patient":
+            try:
+                Patient.objects.get(profile__user=request.user)
+            except Patient.DoesNotExist:
+                return Response({"error": "Patient profile not found"}, status=404)
+            system_prompt = PATIENT_SYSTEM_PROMPT
+        else:
+            return Response({"error": "Invalid role"}, status=400)
+
+        messages = [{"role": "system", "content": system_prompt}] + history + [
+            {"role": "user", "content": message}
+        ]
+
+        try:
+            answer = groq_chat(messages, temperature=0.6, max_tokens=600)
+            return Response({
+                "role": role,
+                "message": message,
+                "answer": answer
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=502)
 
 # Add this to your existing views.py
 
