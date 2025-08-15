@@ -618,6 +618,7 @@
                     
                     document.getElementById("doctorInfo").textContent = `Viewing as Dr. ${data.doctor_name}`;
                     
+                    // ✅ REMOVED DOB, PHONE, GENDER - Only showing basic info
                     patientInfoContainer.innerHTML = `
                         <div class="info-item">
                             <label>👤 Username</label>
@@ -630,18 +631,6 @@
                         <div class="info-item">
                             <label>📧 Email</label>
                             <span>${patient.email || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>📞 Phone</label>
-                            <span>${patient.phone || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>🎂 Date of Birth</label>
-                            <span>${patient.dob || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>⚧ Gender</label>
-                            <span>${patient.gender || 'Not provided'}</span>
                         </div>
                     `;
                 } else {
@@ -742,9 +731,53 @@
                 const documentsContainer = document.getElementById("documentsContainer");
                 documentsContainer.innerHTML = '<div class="no-data">Loading documents...</div>';
 
+                // ✅ FIXED: Try to fetch documents directly from dedicated API first
+                try {
+                    // Get patient by username and fetch their documents
+                    const documentsRes = await fetch(`http://127.0.0.1:8000/api/patients/${currentPatientUsername}/documents/`, {
+                        headers: { 
+                            "Authorization": `Token ${token}`,
+                            "Content-Type": "application/json"
+                        }
+                    });
+
+                    console.log("Documents API Response:", documentsRes);
+
+                    if (documentsRes.ok) {
+                        const documents = await documentsRes.json();
+                        console.log("Documents data:", documents);
+                        
+                        if (documents && documents.length > 0) {
+                            documentsContainer.innerHTML = documents.map(doc => `
+                                <div class="document-item">
+                                    <div class="document-info">
+                                        <div class="document-name">📄 ${doc.doc_type || doc.name || 'Medical Document'}</div>
+                                        <div class="document-meta">
+                                            Uploaded: ${doc.uploaded_at || 'Date not available'}
+                                            ${doc.appointment_id ? ` | Related to Appointment #${doc.appointment_id}` : ''}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-primary" onclick="viewDocument('${doc.file_url || doc.file}')">
+                                            👁️ View
+                                        </button>
+                                        <button class="btn btn-secondary" onclick="downloadDocument('${doc.file_url || doc.file}')">
+                                            💾 Download
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('');
+                            return; // Exit successfully
+                        }
+                    }
+                } catch (docApiError) {
+                    console.log("Direct documents API failed, trying patient detail API...", docApiError);
+                }
+
+                // ✅ FALLBACK: Try from patient detail API response
                 if (patientData && patientData.documents) {
                     const documents = patientData.documents;
-                    console.log("Documents:", documents);
+                    console.log("Documents from patient API:", documents);
                     
                     if (documents.length > 0) {
                         documentsContainer.innerHTML = documents.map(doc => `
@@ -766,17 +799,60 @@
                                 </div>
                             </div>
                         `).join('');
-                    } else {
-                        documentsContainer.innerHTML = '<div class="no-data">📄 No documents uploaded by this patient</div>';
+                        return; // Exit successfully
                     }
-                } else {
-                    documentsContainer.innerHTML = `
-                        <div class="no-data">
-                            📄 Documents not available in API response<br>
-                            <small>Check if API endpoint returns documents array</small>
-                        </div>
-                    `;
                 }
+
+                // ✅ FINAL FALLBACK: Try to fetch all documents and filter by patient
+                try {
+                    const allDocsRes = await fetch(`http://127.0.0.1:8000/api/documents/`, {
+                        headers: { 
+                            "Authorization": `Token ${token}`,
+                            "Content-Type": "application/json"
+                        }
+                    });
+
+                    if (allDocsRes.ok) {
+                        const allDocs = await allDocsRes.json();
+                        console.log("All documents:", allDocs);
+                        
+                        // Filter documents for current patient (by username)
+                        const patientDocs = allDocs.filter(doc => 
+                            doc.patient_username === currentPatientUsername || 
+                            doc.patient === currentPatientUsername ||
+                            (doc.patient_info && doc.patient_info.username === currentPatientUsername)
+                        );
+                        
+                        if (patientDocs.length > 0) {
+                            documentsContainer.innerHTML = patientDocs.map(doc => `
+                                <div class="document-item">
+                                    <div class="document-info">
+                                        <div class="document-name">📄 ${doc.doc_type || doc.name || 'Medical Document'}</div>
+                                        <div class="document-meta">
+                                            Uploaded: ${doc.uploaded_at || 'Date not available'}
+                                            ${doc.appointment_id ? ` | Related to Appointment #${doc.appointment_id}` : ''}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-primary" onclick="viewDocument('${doc.file_url || doc.file}')">
+                                            👁️ View
+                                        </button>
+                                        <button class="btn btn-secondary" onclick="downloadDocument('${doc.file_url || doc.file}')">
+                                            💾 Download
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('');
+                            return; // Exit successfully
+                        }
+                    }
+                } catch (allDocsError) {
+                    console.log("All documents API also failed:", allDocsError);
+                }
+
+                // If we reach here, no documents were found
+                documentsContainer.innerHTML = '<div class="no-data">📄 No documents uploaded by this patient</div>';
+
             } catch (error) {
                 console.error("Error loading patient documents:", error);
                 document.getElementById("documentsContainer").innerHTML = 

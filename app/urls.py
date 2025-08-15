@@ -32,7 +32,9 @@ urlpatterns = [
     # Add this to your urlpatterns in urls.py
     path('doctor/patient/<str:username>/', views.DoctorPatientDetailView.as_view(), name='doctor-patient-detail'),
     path('save-prescription/', views.SavePrescriptionView.as_view(), name='save-prescription'),
-path('patient-history-summary/', views.PatientHistorySummaryView.as_view(), name='patient-history-summary'),
+    path('patient-history-summary/', views.PatientHistorySummaryView.as_view(), name='patient-history-summary'),
+# Add this to your existing urlpatterns
+    path('patients/<str:username>/documents/', views.get_patient_documents, name='patient-documents'),
 
     # =======================
     # Users CRUD

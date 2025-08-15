@@ -1,948 +1,823 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Details - Hospital Management</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            background: #f4f6fb; 
-            line-height: 1.6; 
-        }
-        
-        header { 
-            background: linear-gradient(135deg, #2f80ed 0%, #1e40af 100%);
-            color: #fff;
-            padding: 20px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .header-title h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        
-        .header-title p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            margin-bottom: 24px;
-            overflow: hidden;
-        }
-        
-        .card-header {
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .card-header h3 {
-            margin: 0;
-            color: #1e293b;
-            font-size: 18px;
-        }
-        
-        .card-body {
-            padding: 20px;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-        
-        .info-item {
-            background: #f8fafc;
-            padding: 16px;
-            border-radius: 8px;
-            border-left: 4px solid #2f80ed;
-        }
-        
-        .info-item label {
-            font-weight: 600;
-            color: #374151;
-            display: block;
-            margin-bottom: 4px;
-            font-size: 14px;
-        }
-        
-        .info-item span {
-            color: #6b7280;
-            font-size: 15px;
-        }
-        
-        /* Table styles */
-        .table-container {
-            overflow-x: auto;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        th {
-            background: #f1f5f9;
-            font-weight: 600;
-            color: #374151;
-        }
-        
-        tr:hover {
-            background: #f8fafc;
-        }
-        
-        /* Button styles */
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            margin: 2px;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .btn-primary {
-            background: #2f80ed;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #1e40af;
-        }
-        
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #4b5563;
-        }
-        
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #059669;
-        }
-        
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-        
-        /* Form styles */
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #374151;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: #2f80ed;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        
-        /* Document styles */
-        .document-item {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .document-info {
-            flex: 1;
-        }
-        
-        .document-name {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-        
-        .document-meta {
-            font-size: 12px;
-            color: #6b7280;
-        }
-        
-        /* AI Summary styles */
-        .ai-summary {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 1px solid #bae6fd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 16px;
-        }
-        
-        .ai-summary h4 {
-            margin: 0 0 12px 0;
-            color: #0369a1;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .ai-summary-text {
-            white-space: pre-wrap;
-            line-height: 1.6;
-            color: #1e293b;
-        }
-        
-        /* Status badges */
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .status-booked {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
-        .status-confirmed {
-            background: #dcfce7;
-            color: #166534;
-        }
-        
-        .status-completed {
-            background: #f3f4f6;
-            color: #374151;
-        }
-        
-        .status-cancelled {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        /* Alert styles */
-        .alert {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            border: 1px solid;
-        }
-        
-        .alert-success {
-            background: #dcfce7;
-            border-color: #bbf7d0;
-            color: #166534;
-        }
-        
-        .alert-error {
-            background: #fee2e2;
-            border-color: #fecaca;
-            color: #991b1b;
-        }
-        
-        .alert-info {
-            background: #dbeafe;
-            border-color: #bfdbfe;
-            color: #1e40af;
-        }
-        
-        /* Loading state */
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-        
-        .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #2f80ed;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .no-data {
-            text-align: center;
-            color: #6b7280;
-            padding: 40px 20px;
-            font-style: italic;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 16px;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .document-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-            
-            .container {
-                padding: 12px;
-            }
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Patient Dashboard - Hospital Management</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; background:#f4f6fb; }
+  header { background:#2f80ed;color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center }
+  header h1 { margin:0; font-size:20px; }
+  .container{ padding:20px; max-width:1000px; margin:auto }
+  .card{ background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:18px }
+  table{ width:100%; border-collapse:collapse; font-size:14px }
+  th,td{ border:1px solid #e5e7eb; padding:10px; text-align:left }
+  th{ background:#2f80ed; color:#fff }
+  button.primary{ background:#2f80ed;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer }
+  button.primary:hover { background:#1f5bb5; }
+  button.primary:disabled { background:#ccc; cursor:not-allowed; }
+  button.cancel{ background:#dc3545;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;margin-left:5px }
+  button.cancel:hover { background:#c82333; }
+  input,select,textarea{ width:100%; padding:8px;border:1px solid #d1d5db;border-radius:6px;margin:6px 0; font-size:14px }
+  .error { color: red; margin: 10px 0; }
+  .success { color: green; margin: 10px 0; }
+  .cancelled { background-color: #fff5f5; color: #dc3545; }
+  .booked { background-color: #f0fdf4; color: #16a34a; }
+  
+  /* Pagination styles */
+  .pagination { display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px; }
+  .pagination button { background: #fff; border: 1px solid #e5e7eb; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+  .pagination button:hover { background: #f3f4f6; }
+  .pagination button.active { background: #2f80ed; color: #fff; border-color: #2f80ed; }
+  .pagination button:disabled { background: #f9fafb; color: #9ca3af; cursor: not-allowed; }
+  .pagination-info { margin: 0 15px; font-size: 14px; color: #6b7280; }
+  
+  /* Modal styles */
+  .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
+  .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: none; width: 400px; border-radius: 10px; }
+  .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+  .close:hover { color: black; }
+  
+  /* Chatbot styles */
+  #chatbotBtn{position:fixed;bottom:20px;right:20px;background:#2f80ed;color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:24px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:9999}
+  #chatWindow{position:fixed;bottom:90px;right:20px;width:320px;height:440px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;z-index:9999}
+  #chatMessages{flex:1;padding:12px;overflow-y:auto;font-size:14px;background:#fafbff}
+  .msg-user{text-align:right;color:#2f80ed;margin:6px 0;white-space:pre-wrap}
+  .msg-bot{text-align:left;color:#333;margin:6px 0;white-space:pre-wrap}
+  #chatInput{display:flex;border-top:1px solid #e5e7eb}
+  #chatInput input{flex:1;padding:10px;border:none;outline:none}
+  #chatInput button{padding:10px 14px;background:#2f80ed;color:#fff;border:none;cursor:pointer}
+  
+  .no-data { text-align: center; color: #6b7280; padding: 20px; font-style: italic; }
+</style>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="header-title">
-                <h1 id="patientTitle">Patient Details</h1>
-                <p id="doctorInfo">Loading patient information...</p>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="goBackToDashboard()">← Back to Dashboard</button>
-                <button class="btn btn-danger" onclick="logout()">Logout</button>
-            </div>
-        </div>
-    </header>
 
-    <div class="container">
-        <!-- Alert container -->
-        <div id="alertContainer"></div>
+<header>
+  <h1>Patient Dashboard</h1>
+  <button class="primary" onclick="logout()">Logout</button>
+</header>
 
-        <!-- Patient Information Card -->
-        <div class="card">
-            <div class="card-header">
-                <h3>🔍 Patient Information</h3>
-                <button class="btn btn-secondary" onclick="refreshPatientData()">Refresh</button>
-            </div>
-            <div class="card-body">
-                <div class="info-grid" id="patientInfo">
-                    <!-- Will be populated dynamically -->
-                </div>
-            </div>
-        </div>
+<div class="container">
 
-        <!-- Appointment History Card -->
-        <div class="card">
-            <div class="card-header">
-                <h3>📅 Appointment History</h3>
-                <button class="btn btn-success" onclick="generateAISummary()">🤖 Generate AI Summary</button>
-            </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                                <th>Prescription/Notes</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="appointmentHistoryTable">
-                            <!-- Will be populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+  <h2 id="welcomeMsg"></h2>
+  <div id="errorMsg" class="error" style="display:none;"></div>
+  <div id="successMsg" class="success" style="display:none;"></div>
 
-        <!-- Medical Documents Card -->
-        <div class="card">
-            <div class="card-header">
-                <h3>📋 Medical Documents</h3>
-                <button class="btn btn-secondary" onclick="refreshDocuments()">Refresh Documents</button>
-            </div>
-            <div class="card-body">
-                <div id="documentsContainer">
-                    <!-- Will be populated dynamically -->
-                </div>
-            </div>
-        </div>
+  <div class="card">
+    <h2>Upcoming Appointments</h2>
+    <table id="upcomingTable">
+      <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="upcomingPagination" class="pagination"></div>
+  </div>
 
-        <!-- AI Medical Summary Card -->
-        <div class="card" id="aiSummaryCard" style="display: none;">
-            <div class="card-header">
-                <h3>🤖 AI Medical Summary</h3>
-                <button class="btn btn-secondary" onclick="hideAISummary()">Hide Summary</button>
-            </div>
-            <div class="card-body">
-                <div class="ai-summary">
-                    <h4>
-                        <span>🧠</span>
-                        AI-Generated Medical History Summary
-                    </h4>
-                    <div id="aiSummaryContent" class="ai-summary-text">
-                        <!-- AI summary will be populated here -->
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="card">
+    <h2>Past Appointments & Prescriptions</h2>
+    <table id="pastTable">
+      <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Prescription</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="pastPagination" class="pagination"></div>
+  </div>
 
-        <!-- Prescription Management Card -->
-        <div class="card">
-            <div class="card-header">
-                <h3>💊 Add/Update Prescription</h3>
-            </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label for="appointmentSelect">Select Appointment</label>
-                    <select id="appointmentSelect" class="form-control">
-                        <option value="">Select an appointment</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="prescriptionText">Prescription/Notes</label>
-                    <textarea id="prescriptionText" class="form-control" rows="6" 
-                              placeholder="Enter prescription details, diagnosis, treatment plan, notes..."></textarea>
-                </div>
-                <button class="btn btn-primary" onclick="savePrescription()" id="saveBtn">
-                    💾 Save Prescription
-                </button>
-            </div>
-        </div>
-    </div>
+  <div class="card">
+    <h2>Book Appointment</h2>
+    
+    <label>Filter by Specialization</label>
+    <select id="specializationFilter"></select>
 
-    <script>
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            alert("Please login first.");
-            window.location.href = "login.html";
-        }
+    <label>Select Doctor</label>
+    <select id="doctorSelect"></select>
 
-        let currentPatientUsername = null;
-        let patientData = null;
+    <label>Select Date</label>
+    <input type="date" id="apptDate">
 
-        // Utility functions
-        function showAlert(message, type = 'info') {
-            const alertContainer = document.getElementById("alertContainer");
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.textContent = message;
-            alertContainer.appendChild(alertDiv);
-            
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.parentNode.removeChild(alertDiv);
-                }
-            }, 5000);
-        }
+    <label>Available Slots</label>
+    <select id="slotSelect"></select>
 
-        function showError(message) {
-            showAlert("Error: " + message, 'error');
-        }
+    <label>Upload Medical Document (optional)</label>
+    <input type="file" id="docFile">
 
-        function showSuccess(message) {
-            showAlert(message, 'success');
-        }
+    <button class="primary" id="bookBtn" onclick="bookAppointment()">Book</button>
+  </div>
 
-        function setLoading(elementId, loading) {
-            const element = document.getElementById(elementId);
-            if (loading) {
-                element.classList.add('loading');
-            } else {
-                element.classList.remove('loading');
-            }
-        }
+</div>
 
-        function getStatusBadge(status) {
-            return `<span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
-        }
+<!-- Update Appointment Modal -->
+<div id="updateModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Update Appointment</h2>
+    
+    <label>Select New Doctor (optional)</label>
+    <select id="updateDoctorSelect">
+      <option value="">Keep current doctor</option>
+    </select>
 
-        // Get patient username from localStorage
-        function getSelectedPatient() {
-            const patientName = localStorage.getItem('selectedPatient');
-            if (!patientName) {
-                alert("No patient selected. Redirecting to dashboard...");
-                window.location.href = "doctor_dashboard.html";
-                return null;
-            }
-            return patientName;
-        }
+    <label>Select New Date</label>
+    <input type="date" id="updateDate">
 
-        // Load patient data when page loads
-        async function loadPatientData() {
-            currentPatientUsername = getSelectedPatient();
-            if (!currentPatientUsername) return;
+    <label>Available Slots</label>
+    <select id="updateSlotSelect">
+      <option value="">Select date and doctor first</option>
+    </select>
 
-            document.getElementById("patientTitle").textContent = `Patient Details: ${currentPatientUsername}`;
-            
-            try {
-                // Load all patient information
-                await Promise.all([
-                    loadPatientInfo(),
-                    loadAppointmentHistory(),
-                    loadPatientDocuments()
-                ]);
-            } catch (error) {
-                console.error("Error loading patient data:", error);
-                showError("Failed to load patient data");
-            }
-        }
+    <button class="primary" id="updateBtn" onclick="confirmUpdate()">Update Appointment</button>
+    <button class="primary" onclick="closeUpdateModal()" style="background:#666; margin-left:10px;">Cancel</button>
+  </div>
+</div>
 
-        // Load patient basic information
-        async function loadPatientInfo() {
-            try {
-                const patientInfoContainer = document.getElementById("patientInfo");
-                patientInfoContainer.innerHTML = '<div class="no-data">Loading patient information...</div>';
+<!-- Chatbot UI -->
+<button id="chatbotBtn" title="Chat">💬</button>
+<div id="chatWindow">
+  <div id="chatMessages"></div>
+  <div id="chatInput">
+    <input type="text" id="chatText" placeholder="Ask health-related questions...">
+    <button id="chatSend">Send</button>
+  </div>
+</div>
 
-                // Try to fetch detailed patient info
-                const res = await fetch(`http://127.0.0.1:8000/api/doctor/patient/${currentPatientUsername}/`, {
-                    headers: { "Authorization": `Token ${token}` }
-                });
+<script>
+const token = localStorage.getItem("authToken");
+if (!token) { 
+  alert("Please login first."); 
+  window.location.href = "login.html"; 
+}
 
-                if (res.ok) {
-                    const data = await res.json();
-                    patientData = data;
-                    const patient = data.patient_info;
-                    
-                    document.getElementById("doctorInfo").textContent = `Viewing as Dr. ${data.doctor_name}`;
-                    
-                    patientInfoContainer.innerHTML = `
-                        <div class="info-item">
-                            <label>👤 Username</label>
-                            <span>${patient.username}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>📝 Full Name</label>
-                            <span>${patient.full_name || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>📧 Email</label>
-                            <span>${patient.email || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>📞 Phone</label>
-                            <span>${patient.phone || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>🎂 Date of Birth</label>
-                            <span>${patient.dob || 'Not provided'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>⚧ Gender</label>
-                            <span>${patient.gender || 'Not provided'}</span>
-                        </div>
-                    `;
-                } else {
-                    throw new Error('Patient detail API not available');
-                }
-            } catch (error) {
-                console.error("Error loading patient info:", error);
-                document.getElementById("patientInfo").innerHTML = `
-                    <div class="info-item">
-                        <label>⚠️ Patient Information</label>
-                        <span style="color:#ef4444;">Error loading detailed patient information. API endpoint may not be implemented.</span>
-                    </div>
-                `;
-            }
-        }
+let currentUpdateAppointmentId = null;
+let upcomingAppointments = [];
+let pastAppointments = [];
+let upcomingCurrentPage = 1;
+let pastCurrentPage = 1;
+const itemsPerPage = 5;
 
-        // Load appointment history
-        async function loadAppointmentHistory() {
-            try {
-                const tableBody = document.getElementById("appointmentHistoryTable");
-                const appointmentSelect = document.getElementById("appointmentSelect");
-                
-                tableBody.innerHTML = '<tr><td colspan="5" class="no-data">Loading appointment history...</td></tr>';
-                appointmentSelect.innerHTML = '<option value="">Select an appointment</option>';
+// ✅ Utility functions
+function showError(message) {
+  const errorDiv = document.getElementById("errorMsg");
+  errorDiv.textContent = message;
+  errorDiv.style.display = "block";
+  setTimeout(() => errorDiv.style.display = "none", 5000);
+}
 
-                if (patientData && patientData.appointment_history) {
-                    const appointments = patientData.appointment_history;
-                    
-                    if (appointments.length > 0) {
-                        tableBody.innerHTML = '';
-                        
-                        appointments.forEach(appointment => {
-                            const prescriptionText = appointment.prescription_text || appointment.notes || 'Not added';
-                            const truncatedPrescription = prescriptionText.length > 100 
-                                ? prescriptionText.substring(0, 100) + '...' 
-                                : prescriptionText;
+function showSuccess(message) {
+  const successDiv = document.getElementById("successMsg");
+  successDiv.textContent = message;
+  successDiv.style.display = "block";
+  setTimeout(() => successDiv.style.display = "none", 3000);
+}
 
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td><strong>${appointment.date}</strong></td>
-                                <td>${appointment.time}</td>
-                                <td>${getStatusBadge(appointment.status)}</td>
-                                <td title="${prescriptionText}">${truncatedPrescription}</td>
-                                <td>
-                                    <button class="btn btn-primary" onclick="editPrescription(${appointment.id}, '${appointment.date}', '${appointment.time}')">
-                                        ✏️ Edit
-                                    </button>
-                                    ${prescriptionText !== 'Not added' ? 
-                                        `<button class="btn btn-secondary" onclick="viewFullPrescription('${prescriptionText.replace(/'/g, "\\'")}')">
-                                            👁️ View Full
-                                        </button>` 
-                                        : ''
-                                    }
-                                </td>
-                            `;
-                            tableBody.appendChild(row);
+function isURL(str) {
+  try { const u = new URL(str); return u.protocol === "http:" || u.protocol === "https:"; }
+  catch { return false; }
+}
 
-                            // Add to appointment select
-                            const option = document.createElement('option');
-                            option.value = appointment.id;
-                            option.textContent = `${appointment.date} - ${appointment.time} (${appointment.status})`;
-                            appointmentSelect.appendChild(option);
-                        });
-                    } else {
-                        tableBody.innerHTML = '<tr><td colspan="5" class="no-data">No appointments found with this doctor</td></tr>';
-                    }
-                } else {
-                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data">Unable to load appointment history</td></tr>';
-                }
-            } catch (error) {
-                console.error("Error loading appointment history:", error);
-                document.getElementById("appointmentHistoryTable").innerHTML = 
-                    '<tr><td colspan="5" class="no-data">Error loading appointment history</td></tr>';
-            }
-        }
+// ✅ Pagination utility functions
+function paginate(array, page, itemsPerPage) {
+  const start = (page - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return array.slice(start, end);
+}
 
-        // Load patient documents
-        async function loadPatientDocuments() {
-            try {
-                const documentsContainer = document.getElementById("documentsContainer");
-                documentsContainer.innerHTML = '<div class="no-data">Loading documents...</div>';
+function createPagination(containerId, totalItems, currentPage, onPageChange) {
+  const container = document.getElementById(containerId);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  let paginationHTML = '';
+  
+  // Previous button
+  paginationHTML += `<button ${currentPage === 1 ? 'disabled' : ''} onclick="${onPageChange}(${currentPage - 1})">Previous</button>`;
+  
+  // Page numbers
+  for (let i = 1; i <= totalPages; i++) {
+    paginationHTML += `<button class="${i === currentPage ? 'active' : ''}" onclick="${onPageChange}(${i})">${i}</button>`;
+  }
+  
+  // Next button
+  paginationHTML += `<button ${currentPage === totalPages ? 'disabled' : ''} onclick="${onPageChange}(${currentPage + 1})">Next</button>`;
+  
+  // Page info
+  const start = (currentPage - 1) * itemsPerPage + 1;
+  const end = Math.min(currentPage * itemsPerPage, totalItems);
+  paginationHTML += `<span class="pagination-info">Showing ${start}-${end} of ${totalItems}</span>`;
+  
+  container.innerHTML = paginationHTML;
+}
 
-                if (patientData && patientData.documents) {
-                    const documents = patientData.documents;
-                    
-                    if (documents.length > 0) {
-                        documentsContainer.innerHTML = documents.map(doc => `
-                            <div class="document-item">
-                                <div class="document-info">
-                                    <div class="document-name">📄 ${doc.doc_type}</div>
-                                    <div class="document-meta">
-                                        Uploaded: ${doc.uploaded_at}
-                                        ${doc.appointment_id ? ` | Related to Appointment #${doc.appointment_id}` : ''}
-                                    </div>
-                                </div>
-                                <div>
-                                    <button class="btn btn-primary" onclick="viewDocument('${doc.file_url}')">
-                                        👁️ View
-                                    </button>
-                                    <button class="btn btn-secondary" onclick="downloadDocument('${doc.file_url}')">
-                                        💾 Download
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('');
-                    } else {
-                        documentsContainer.innerHTML = '<div class="no-data">📄 No documents uploaded by this patient</div>';
-                    }
-                } else {
-                    documentsContainer.innerHTML = `
-                        <div class="no-data">
-                            📄 Document feature requires API implementation<br>
-                            <small>Add endpoint: GET /api/doctor/patient/{username}/</small>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error("Error loading patient documents:", error);
-                document.getElementById("documentsContainer").innerHTML = 
-                    '<div class="no-data">❌ Error loading documents</div>';
-            }
-        }
+function changeUpcomingPage(page) {
+  if (page < 1 || page > Math.ceil(upcomingAppointments.length / itemsPerPage)) return;
+  upcomingCurrentPage = page;
+  renderUpcomingTable();
+}
 
-        // Edit prescription for specific appointment
-        function editPrescription(appointmentId, date, time) {
-            document.getElementById("appointmentSelect").value = appointmentId;
-            
-            // Load existing prescription if available
-            if (patientData && patientData.appointment_history) {
-                const appointment = patientData.appointment_history.find(a => a.id === appointmentId);
-                if (appointment && appointment.prescription_text) {
-                    document.getElementById("prescriptionText").value = appointment.prescription_text;
-                }
-            }
-            
-            // Scroll to prescription section
-            document.getElementById("prescriptionText").scrollIntoView({ behavior: 'smooth' });
-            showAlert(`Selected appointment: ${date} at ${time}`, 'info');
-        }
+function changePastPage(page) {
+  if (page < 1 || page > Math.ceil(pastAppointments.length / itemsPerPage)) return;
+  pastCurrentPage = page;
+  renderPastTable();
+}
 
-        // Save prescription
-        async function savePrescription() {
-            const appointmentId = document.getElementById("appointmentSelect").value;
-            const prescriptionText = document.getElementById("prescriptionText").value.trim();
+function renderUpcomingTable() {
+  const upT = document.querySelector("#upcomingTable tbody");
+  const paginatedData = paginate(upcomingAppointments, upcomingCurrentPage, itemsPerPage);
+  
+  upT.innerHTML = "";
+  
+  if (paginatedData.length === 0) {
+    upT.innerHTML = '<tr><td colspan="5" class="no-data">No upcoming appointments</td></tr>';
+  } else {
+    paginatedData.forEach(a => {
+      const statusClass = a.status === 'cancelled' ? 'cancelled' : 'booked';
+      upT.innerHTML += `<tr class="${statusClass}">
+        <td>${a.date}</td>
+        <td>${a.time}</td>
+        <td>${a.doctor_name}</td>
+        <td style="text-transform:capitalize">${a.status || 'booked'}</td>
+        <td>
+          ${a.status !== 'cancelled' ? 
+            `<button class="primary" onclick="openUpdateModal(${a.id}, '${a.date}', '${a.time}', '${a.doctor_name}')">Update</button>
+             <button class="cancel" onclick="cancelAppointment(${a.id})">Cancel</button>` :
+            '<span style="color: #dc3545;">Cancelled</span>'
+          }
+        </td>
+      </tr>`;
+    });
+  }
+  
+  createPagination('upcomingPagination', upcomingAppointments.length, upcomingCurrentPage, 'changeUpcomingPage');
+}
 
-            if (!appointmentId) {
-                showError("Please select an appointment");
-                return;
-            }
+function renderPastTable() {
+  const pastT = document.querySelector("#pastTable tbody");
+  const paginatedData = paginate(pastAppointments, pastCurrentPage, itemsPerPage);
+  
+  pastT.innerHTML = "";
+  
+  if (paginatedData.length === 0) {
+    pastT.innerHTML = '<tr><td colspan="4" class="no-data">No past appointments</td></tr>';
+  } else {
+    paginatedData.forEach(a => {
+      const presCell = a.prescription
+        ? (isURL(a.prescription)
+            ? `<a href="${a.prescription}" target="_blank">View</a>`
+            : `<span title="Prescription">${a.prescription}</span>`)
+        : "N/A";
+      pastT.innerHTML += `<tr>
+        <td>${a.date}</td>
+        <td>${a.time}</td>
+        <td>${a.doctor_name}</td>
+        <td>${presCell}</td>
+      </tr>`;
+    });
+  }
+  
+  createPagination('pastPagination', pastAppointments.length, pastCurrentPage, 'changePastPage');
+}
 
-            if (!prescriptionText) {
-                showError("Please enter prescription/notes");
-                return;
-            }
+// ✅ Load patient dashboard
+async function loadPatientDashboard() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/patient/dashboard/", {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Dashboard API returned ${res.status}`);
+    }
+    
+    const data = await res.json();
 
-            const saveBtn = document.getElementById("saveBtn");
-            setLoading('saveBtn', true);
-            saveBtn.innerHTML = '<div class="spinner"></div>Saving Prescription...';
+    if (data.patient_name) {
+      document.getElementById("welcomeMsg").textContent = `Welcome ${data.patient_name}`;
+    }
 
-            try {
-                // Try new prescription API first
-                let res = await fetch("http://127.0.0.1:8000/api/save-prescription/", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Token ${token}`
-                    },
-                    body: JSON.stringify({
-                        appointment_id: appointmentId,
-                        prescription: prescriptionText,
-                        notes: prescriptionText
-                    })
-                });
+    // Store data globally for pagination
+    upcomingAppointments = data.upcoming || [];
+    pastAppointments = data.past || [];
+    
+    // Reset to first page
+    upcomingCurrentPage = 1;
+    pastCurrentPage = 1;
+    
+    // Render tables with pagination
+    renderUpcomingTable();
+    renderPastTable();
 
-                if (!res.ok) {
-                    // Fallback to appointment update API
-                    res = await fetch(`http://127.0.0.1:8000/api/appointments/${appointmentId}/`, {
-                        method: "PATCH",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Token ${token}`
-                        },
-                        body: JSON.stringify({ prescription: prescriptionText })
-                    });
-                }
+    // ✅ Load specializations after dashboard loads
+    await loadSpecializations();
+    
+  } catch (error) {
+    console.error("Dashboard load error:", error);
+    showError("Failed to load dashboard: " + error.message);
+  }
+}
 
-                if (res.ok) {
-                    showSuccess("Prescription saved successfully!");
-                    document.getElementById("prescriptionText").value = "";
-                    document.getElementById("appointmentSelect").value = "";
-                    
-                    // Reload appointment history
-                    await loadPatientData();
-                } else {
-                    const data = await res.json();
-                    throw new Error(data.error || data.detail || "Failed to save prescription");
-                }
-            } catch (error) {
-                console.error("Save prescription error:", error);
-                showError("Failed to save prescription: " + error.message);
-            } finally {
-                setLoading('saveBtn', false);
-                saveBtn.innerHTML = '💾 Save Prescription';
-            }
-        }
+// ✅ Load specializations
+async function loadSpecializations() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/doctors/specializations/", {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Specializations API returned ${res.status}`);
+    }
+    
+    const specs = await res.json();
+    const filter = document.getElementById("specializationFilter");
+    filter.innerHTML = `<option value="">All Specializations</option>`;
+    
+    if (Array.isArray(specs)) {
+      specs.forEach(s => {
+        filter.innerHTML += `<option value="${s}">${s}</option>`;
+      });
+    }
+    
+    // ✅ Remove old listener and add new one
+    filter.removeEventListener("change", loadDoctors);
+    filter.addEventListener("change", loadDoctors);
+    
+    // ✅ Load initial doctors
+    await loadDoctors();
+    await loadAllDoctorsForUpdate(); // Load doctors for update modal
+    
+  } catch (error) {
+    console.error("Specializations load error:", error);
+    showError("Failed to load specializations: " + error.message);
+    // ✅ Still try to load doctors even if specializations fail
+    await loadDoctors();
+    await loadAllDoctorsForUpdate();
+  }
+}
 
-        // Generate AI summary
-        async function generateAISummary() {
-            const summaryCard = document.getElementById("aiSummaryCard");
-            const summaryContent = document.getElementById("aiSummaryContent");
-            
-            summaryCard.style.display = 'block';
-            summaryContent.innerHTML = '🤔 Generating AI summary...';
-            
-            try {
-                const res = await fetch("http://127.0.0.1:8000/api/patient-history-summary/", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Token ${token}`
-                    },
-                    body: JSON.stringify({ 
-                        patient_username: currentPatientUsername 
-                    })
-                });
+// ✅ Load doctors
+async function loadDoctors() {
+  try {
+    const specialization = document.getElementById("specializationFilter").value;
+    const url = specialization 
+      ? `http://127.0.0.1:8000/api/doctors/?specialization=${encodeURIComponent(specialization)}`
+      : "http://127.0.0.1:8000/api/doctors/";
+    
+    const res = await fetch(url, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Doctors API returned ${res.status}`);
+    }
+    
+    const data = await res.json();
+    const select = document.getElementById("doctorSelect");
+    select.innerHTML = "<option value=''>Select a doctor</option>";
+    
+    if (Array.isArray(data)) {
+      data.forEach(d => {
+        select.innerHTML += `<option value="${d.id}">${d.username} (${d.specialization})</option>`;
+      });
+    }
+    
+    // ✅ Clear slots and date when doctors change
+    document.getElementById("slotSelect").innerHTML = "<option value=''>Select date first</option>";
+    document.getElementById("apptDate").value = "";
+    
+  } catch (error) {
+    console.error("Doctors load error:", error);
+    showError("Failed to load doctors: " + error.message);
+  }
+}
 
-                if (res.ok) {
-                    const data = await res.json();
-                    summaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
-                    showSuccess("AI summary generated successfully!");
-                } else {
-                    const error = await res.json();
-                    throw new Error(error.error || error.detail || "Failed to generate summary");
-                }
-            } catch (error) {
-                console.error("AI summary error:", error);
-                summaryContent.innerHTML = `❌ Error generating summary: ${error.message}`;
-                showError("Failed to generate AI summary");
-            }
-        }
+// ✅ Load all doctors for update modal
+async function loadAllDoctorsForUpdate() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/doctors/", {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) return;
+    
+    const data = await res.json();
+    const select = document.getElementById("updateDoctorSelect");
+    select.innerHTML = "<option value=''>Keep current doctor</option>";
+    
+    if (Array.isArray(data)) {
+      data.forEach(d => {
+        select.innerHTML += `<option value="${d.id}">${d.username} (${d.specialization})</option>`;
+      });
+    }
+    
+  } catch (error) {
+    console.error("Update doctors load error:", error);
+  }
+}
 
-        // View full prescription
-        function viewFullPrescription(prescription) {
-            const prescriptionWindow = window.open('', '_blank', 'width=600,height=400,scrollbars=yes,resizable=yes');
-            prescriptionWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Prescription Details</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-                            .header { background: #2f80ed; color: white; padding: 15px; margin: -20px -20px 20px -20px; }
-                            .prescription-content { background: #f9f9f9; padding: 15px; border-radius: 5px; white-space: pre-wrap; }
-                            .print-btn { background: #2f80ed; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 15px; margin-right: 10px; }
-                            .print-btn:hover { background: #1e40af; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="header">
-                            <h2>💊 Prescription Details</h2>
-                            <p>Patient: ${currentPatientUsername}</p>
-                        </div>
-                        <div class="prescription-content">${prescription}</div>
-                        <button class="print-btn" onclick="window.print()">🖨️ Print</button>
-                        <button class="print-btn" onclick="window.close()" style="background: #6b7280;">❌ Close</button>
-                    </body>
-                </html>
-            `);
-        }
+// ✅ Event listeners for slot loading
+document.getElementById("apptDate").addEventListener("change", loadSlots);
+document.getElementById("doctorSelect").addEventListener("change", loadSlots);
 
-        // View document
-        function viewDocument(url) {
-            if (url) {
-                window.open(url, '_blank');
-            } else {
-                showError("Document URL not available");
-            }
-        }
+// ✅ Event listeners for update modal slot loading
+document.getElementById("updateDate").addEventListener("change", loadUpdateSlots);
+document.getElementById("updateDoctorSelect").addEventListener("change", loadUpdateSlots);
 
-        // Download document
-        function downloadDocument(url) {
-            if (url) {
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = '';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                showError("Document URL not available");
-            }
-        }
+// ✅ Load available slots (now considers cancelled appointments)
+async function loadSlots() {
+  const docId = document.getElementById("doctorSelect").value;
+  const date = document.getElementById("apptDate").value;
+  const select = document.getElementById("slotSelect");
+  
+  if (!docId || !date) {
+    select.innerHTML = "<option value=''>Select doctor and date first</option>";
+    return;
+  }
+  
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/slots/?doctor_id=${docId}&date=${date}`, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Slots API returned ${res.status}`);
+    }
+    
+    const slots = await res.json();
+    select.innerHTML = "";
+    
+    if (Array.isArray(slots) && slots.length > 0) {
+      slots.forEach(s => {
+        const [h, m] = s.split(":");
+        let endHour = parseInt(h,10), endMin = parseInt(m,10) + 30;
+        if (endMin >= 60) { endHour += 1; endMin -= 60; }
+        select.innerHTML += `<option value="${s}">${s} - ${String(endHour).padStart(2,"0")}:${String(endMin).padStart(2,"0")}</option>`;
+      });
+    } else {
+      select.innerHTML = "<option value=''>No slots available</option>";
+    }
+    
+  } catch (error) {
+    console.error("Slots load error:", error);
+    select.innerHTML = "<option value=''>Error loading slots</option>";
+    showError("Failed to load slots: " + error.message);
+  }
+}
 
-        // Refresh functions
-        async function refreshPatientData() {
-            showAlert("Refreshing patient data...", 'info');
-            await loadPatientData();
-            showSuccess("Patient data refreshed!");
-        }
+// ✅ Load available slots for update modal
+async function loadUpdateSlots() {
+  const docId = document.getElementById("updateDoctorSelect").value;
+  const date = document.getElementById("updateDate").value;
+  const select = document.getElementById("updateSlotSelect");
+  
+  if (!date) {
+    select.innerHTML = "<option value=''>Select date first</option>";
+    return;
+  }
+  
+  // If no doctor selected in update, we can't load slots
+  if (!docId) {
+    select.innerHTML = "<option value=''>Select doctor to see available slots</option>";
+    return;
+  }
+  
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/slots/?doctor_id=${docId}&date=${date}`, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Update slots API returned ${res.status}`);
+    }
+    
+    const slots = await res.json();
+    select.innerHTML = "";
+    
+    if (Array.isArray(slots) && slots.length > 0) {
+      slots.forEach(s => {
+        const [h, m] = s.split(":");
+        let endHour = parseInt(h,10), endMin = parseInt(m,10) + 30;
+        if (endMin >= 60) { endHour += 1; endMin -= 60; }
+        select.innerHTML += `<option value="${s}">${s} - ${String(endHour).padStart(2,"0")}:${String(endMin).padStart(2,"0")}</option>`;
+      });
+    } else {
+      select.innerHTML = "<option value=''>No slots available</option>";
+    }
+    
+  } catch (error) {
+    console.error("Update slots load error:", error);
+    select.innerHTML = "<option value=''>Error loading slots</option>";
+    showError("Failed to load update slots: " + error.message);
+  }
+}
 
-        async function refreshDocuments() {
-            await loadPatientDocuments();
-            showSuccess("Documents refreshed!");
-        }
+// ✅ Book appointment
+async function bookAppointment() {
+  const bookBtn = document.getElementById("bookBtn");
+  const doctor_id = document.getElementById("doctorSelect").value;
+  const date = document.getElementById("apptDate").value;
+  const time = document.getElementById("slotSelect").value;
+  const file = document.getElementById("docFile").files[0];
 
-        function hideAISummary() {
-            document.getElementById("aiSummaryCard").style.display = 'none';
-        }
+  if (!doctor_id || !date || !time) {
+    showError("Please select doctor, date, and time slot.");
+    return;
+  }
 
-        // Navigation functions
-        function goBackToDashboard() {
-            // Clear selected patient
-            localStorage.removeItem('selectedPatient');
-            window.location.href = "doctor_dashboard.html";
-        }
+  // ✅ Disable button and show loading
+  bookBtn.disabled = true;
+  bookBtn.textContent = "Booking...";
 
-        function logout() {
-            if (confirm("Are you sure you want to logout?")) {
-                localStorage.removeItem("authToken");
-                localStorage.removeItem('selectedPatient');
-                showSuccess("Logged out successfully");
-                setTimeout(() => {
-                    window.location.href = "login.html";
-                }, 1000);
-            }
-        }
+  try {
+    // ✅ Book appointment first
+    const appointmentRes = await fetch("http://127.0.0.1:8000/api/appointments/", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Token ${token}` 
+      },
+      body: JSON.stringify({
+        doctor_id: doctor_id,
+        date: date,
+        time: time  // Backend expects 'time' or 'slot'
+      })
+    });
+    
+    const appointmentData = await appointmentRes.json();
+    
+    if (!appointmentRes.ok) {
+      throw new Error(appointmentData.error || appointmentData.detail || "Booking failed");
+    }
 
-        // Initialize page
-        document.addEventListener("DOMContentLoaded", () => {
-            loadPatientData();
-            
-            // Add keyboard shortcuts
-            document.addEventListener("keydown", (e) => {
-                // ESC to go back to dashboard
-                if (e.key === "Escape") {
-                    goBackToDashboard();
-                }
-                
-                // Ctrl+R to refresh patient data
-                if (e.ctrlKey && e.key === "r") {
-                    e.preventDefault();
-                    refreshPatientData();
-                }
-            });
+    // ✅ Upload document if provided (optional)
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append("document", file);
+        
+        const docRes = await fetch("http://127.0.0.1:8000/api/documents/upload/", {
+          method: "POST",
+          headers: { "Authorization": `Token ${token}` },
+          body: formData
         });
-    </script>
+        
+        if (!docRes.ok) {
+          console.warn("Document upload failed, but appointment was booked");
+          showSuccess("Appointment booked! (Document upload failed - you can try uploading later)");
+        } else {
+          showSuccess("Appointment booked successfully!");
+        }
+      } catch (docError) {
+        console.warn("Document upload error:", docError);
+        showSuccess("Appointment booked! (Document upload failed - you can try uploading later)");
+      }
+    } else {
+      showSuccess("Appointment booked successfully!");
+    }
+
+    // ✅ Clear form
+    document.getElementById("specializationFilter").value = "";
+    document.getElementById("doctorSelect").innerHTML = "<option value=''>Select specialization first</option>";
+    document.getElementById("apptDate").value = "";
+    document.getElementById("slotSelect").innerHTML = "<option value=''>Select doctor and date first</option>";
+    document.getElementById("docFile").value = "";
+
+    // ✅ Reload dashboard
+    await loadPatientDashboard();
+
+  } catch (error) {
+    console.error("Booking error:", error);
+    showError("Booking failed: " + error.message);
+  } finally {
+    bookBtn.disabled = false;
+    bookBtn.textContent = "Book";
+  }
+}
+
+// ✅ Modal functions for update appointment
+function openUpdateModal(appointmentId, currentDate, currentTime, doctorName) {
+  currentUpdateAppointmentId = appointmentId;
+  document.getElementById("updateDate").value = currentDate;
+  document.getElementById("updateModal").style.display = "block";
+  
+  // Reset the doctor selection to show current doctor info
+  const updateSelect = document.getElementById("updateDoctorSelect");
+  updateSelect.innerHTML = `<option value="">Keep current doctor (${doctorName})</option>`;
+  
+  // Reload all doctors for selection
+  loadAllDoctorsForUpdate();
+  
+  // Clear slots initially
+  document.getElementById("updateSlotSelect").innerHTML = "<option value=''>Select doctor to see available slots</option>";
+}
+
+function closeUpdateModal() {
+  document.getElementById("updateModal").style.display = "none";
+  currentUpdateAppointmentId = null;
+}
+
+// ✅ FIXED: Confirm appointment update
+async function confirmUpdate() {
+  if (!currentUpdateAppointmentId) return;
+  
+  const updateBtn = document.getElementById("updateBtn");
+  const newDoctorId = document.getElementById("updateDoctorSelect").value;
+  const newDate = document.getElementById("updateDate").value;
+  const newSlot = document.getElementById("updateSlotSelect").value;
+
+  if (!newDate) {
+    showError("Please select a date.");
+    return;
+  }
+
+  // ✅ Build update payload - only include fields that are being changed
+  const updateData = {
+    date: newDate
+  };
+
+  // ✅ Only include doctor if user selected one
+  if (newDoctorId) {
+    updateData.doctor_id = newDoctorId;
+  }
+
+  // ✅ Only include slot if user selected one AND selected a doctor
+  if (newSlot && newDoctorId) {
+    updateData.slot = newSlot; // ✅ Use 'slot' instead of 'time'
+  } else if (newSlot && !newDoctorId) {
+    showError("Please select a doctor to update the time slot.");
+    return;
+  }
+
+  updateBtn.disabled = true;
+  updateBtn.textContent = "Updating...";
+
+  try {
+    // ✅ Try the custom update endpoint first
+    let res = await fetch(`http://127.0.0.1:8000/api/appointment/${currentUpdateAppointmentId}/update/`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Token ${token}` 
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!res.ok) {
+      // ✅ If custom endpoint fails, try PATCH endpoint
+      res = await fetch(`http://127.0.0.1:8000/api/appointments/${currentUpdateAppointmentId}/`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Token ${token}` 
+        },
+        body: JSON.stringify(updateData)
+      });
+    }
+
+    const responseData = await res.json();
+
+    if (res.ok) {
+      showSuccess("Appointment updated successfully!");
+      closeUpdateModal();
+      await loadPatientDashboard();
+    } else {
+      throw new Error(responseData.error || responseData.detail || "Update failed");
+    }
+
+  } catch (error) {
+    console.error("Update error:", error);
+    showError("Update failed: " + error.message);
+  } finally {
+    updateBtn.disabled = false;
+    updateBtn.textContent = "Update Appointment";
+  }
+}
+
+// ✅ Enhanced Cancel appointment - now properly sets status to cancelled
+async function cancelAppointment(id) {
+  if (!confirm("Are you sure you want to cancel this appointment?")) return;
+
+  try {
+    // First try the custom cancel endpoint
+    const res1 = await fetch(`http://127.0.0.1:8000/api/appointment/${id}/cancel/`, {
+      method: "POST",
+      headers: { 
+        "Authorization": `Token ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (res1.ok) {
+      showSuccess("Appointment cancelled successfully! The slot is now available for other patients.");
+      await loadPatientDashboard(); // Reload to show updated status
+      return;
+    }
+
+    // If custom endpoint doesn't work, try PATCH to update status
+    const res2 = await fetch(`http://127.0.0.1:8000/api/appointments/${id}/`, {
+      method: "PATCH",
+      headers: { 
+        "Authorization": `Token ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ status: "cancelled" })
+    });
+    
+    if (res2.ok) {
+      showSuccess("Appointment cancelled successfully! The slot is now available for other patients.");
+      await loadPatientDashboard(); // Reload to show updated status
+      return;
+    }
+
+    // If both fail, show error
+    const errorData = await res2.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.detail || "Cancel failed");
+
+  } catch (error) {
+    console.error("Cancel error:", error);
+    showError("Cancel failed: " + error.message);
+  }
+}
+
+function logout() {
+  localStorage.removeItem("authToken");
+  window.location.href = "login.html";
+}
+
+// Chatbot functionality
+const chatBtn = document.getElementById("chatbotBtn");
+const chatWin = document.getElementById("chatWindow");
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatText");
+const chatSend = document.getElementById("chatSend");
+let history = [];
+
+chatBtn.addEventListener("click", () => {
+  chatWin.style.display = chatWin.style.display === "none" ? "flex" : "none";
+});
+
+function addMsg(text, sender) {
+  const div = document.createElement("div");
+  div.className = sender === "user" ? "msg-user" : "msg-bot";
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function sendChat() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  
+  addMsg(text, "user");
+  history.push({ role: "user", content: text });
+  chatInput.value = "";
+  
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/chat/", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Token ${token}` 
+      },
+      body: JSON.stringify({ messages: history })
+    });
+    
+    const data = await res.json();
+    if (res.ok && data.reply) {
+      addMsg(data.reply, "bot");
+      history.push({ role: "assistant", content: data.reply });
+    } else {
+      addMsg(data.detail || "Error: Unable to get response.", "bot");
+    }
+  } catch (error) {
+    console.error("Chat error:", error);
+    addMsg("Error: Could not connect to chatbot.", "bot");
+  }
+}
+
+chatSend.addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", e => { 
+  if (e.key === "Enter") sendChat(); 
+});
+
+// ✅ Modal close button event listener
+document.querySelector(".close").addEventListener("click", closeUpdateModal);
+
+// ✅ Close modal when clicking outside
+window.addEventListener("click", (event) => {
+  const modal = document.getElementById("updateModal");
+  if (event.target === modal) {
+    closeUpdateModal();
+  }
+});
+
+// ✅ Initialize dashboard on page load
+document.addEventListener("DOMContentLoaded", () => {
+  loadPatientDashboard();
+});
+
+// ✅ Also call it directly for immediate loading
+loadPatientDashboard();
+</script>
 </body>
 </html>

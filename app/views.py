@@ -320,14 +320,16 @@ class DocumentUploadView(APIView):
         try:
             document = Document.objects.create(
                 patient=patient,
-                document=document_file,
-                # Add other fields as needed based on your Document model
+                file=document_file,  # Changed from 'document' to 'file' to match the model
+                doc_type=request.data.get('doc_type', 'other'),
+                appointment_id=request.data.get('appointment_id') if request.data.get('appointment_id') else None
             )
             
             return Response({
                 "id": document.id,
                 "message": "Document uploaded successfully",
-                "url": document.document.url if hasattr(document.document, 'url') else str(document.document)
+                "url": document.file.url if document.file else None,
+                "doc_type": document.doc_type
             }, status=201)
         except Exception as e:
             return Response({"error": f"Upload failed: {str(e)}"}, status=500)
@@ -991,38 +993,68 @@ class PatientDashboardView(APIView):
             return Response({"error": "Only patients can access"}, status=403)
 
         today = date.today()
-        patient = Patient.objects.get(profile=request.user.profile)
+        try:
+            patient = Patient.objects.get(profile=request.user.profile)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient profile not found"}, status=404)
 
-        # Fetch appointments
-        appointments = Appointment.objects.filter(patient=patient).select_related("doctor").order_by("date", "slot")
+        # Fetch appointments with related doctor and visit notes
+        appointments = Appointment.objects.filter(patient=patient).select_related(
+            "doctor", "doctor__profile__user"
+        ).prefetch_related("visitnote_set").order_by("date", "slot")
 
         upcoming, past = [], []
+
         for appt in appointments:
             doctor_name = appt.doctor.profile.user.username
             slot_time = appt.slot if isinstance(appt.slot, str) else appt.slot.strftime("%H:%M")
-            
-            # ✅ Handle prescription properly - could be URL or text
-            prescription_value = getattr(appt, "prescription", "") or ""
-            
+
+            # ✅ FIXED: Get prescription from VisitNote properly
+            prescription_value = ""
+            try:
+                # Get the latest visit note for this appointment
+                visit_note = appt.visitnote_set.order_by('-visit_date').first()
+                if visit_note:
+                    # If prescription is a file field, get the URL
+                    if visit_note.prescription:
+                        if hasattr(visit_note.prescription, 'url'):
+                            prescription_value = visit_note.prescription.url
+                        else:
+                            prescription_value = str(visit_note.prescription)
+                    
+                    # If no prescription file but has notes, use notes
+                    if not prescription_value and visit_note.notes:
+                        prescription_value = visit_note.notes
+                        
+            except Exception as e:
+                print(f"Error getting prescription for appointment {appt.id}: {e}")
+
+            # Fallback to appointment prescription field
+            if not prescription_value:
+                prescription_value = getattr(appt, "prescription", "") or ""
+
             item = {
                 "id": appt.id,
                 "date": appt.date.strftime("%Y-%m-%d"),
                 "time": slot_time,
                 "doctor_name": doctor_name,
-                "status": getattr(appt, "status", "booked"),  # Default status
-                "prescription": prescription_value
+                "status": getattr(appt, "status", "booked"),
+                "prescription": prescription_value  # This should now show the prescription
             }
-            
+
             if appt.date >= today:
                 upcoming.append(item)
             else:
                 past.append(item)
 
+        patient_name = request.user.get_full_name() or request.user.username
+
         return Response({
-            "patient_name": request.user.username,
+            "patient_name": patient_name,
             "upcoming": upcoming,
             "past": past
         })
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -1726,3 +1758,37 @@ class SavePrescriptionView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+# Add this view to your views.py
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_patient_documents(request, username):
+    """Get all documents for a specific patient by username"""
+    if request.user.profile.role != "doctor":
+        return Response({"error": "Only doctors can access patient documents"}, status=403)
+    
+    try:
+        # Get patient by username
+        patient_user = User.objects.get(username=username)
+        patient = Patient.objects.get(profile__user=patient_user)
+        
+        # Get all documents for this patient
+        documents = Document.objects.filter(patient=patient).order_by('-uploaded_at')
+        
+        document_list = []
+        for doc in documents:
+            document_list.append({
+                "id": doc.id,
+                "file_url": doc.file.url if doc.file else None,
+                "doc_type": doc.get_doc_type_display(),
+                "uploaded_at": doc.uploaded_at.strftime("%Y-%m-%d %H:%M"),
+                "appointment_id": doc.appointment.id if doc.appointment else None
+            })
+        
+        return Response(document_list)
+        
+    except User.DoesNotExist:
+        return Response({"error": "Patient not found"}, status=404)
+    except Patient.DoesNotExist:
+        return Response({"error": "Patient profile not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

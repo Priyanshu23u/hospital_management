@@ -55,7 +55,7 @@ class Appointment(models.Model):
 
 # Visit notes from doctor (with prescription)
 class VisitNote(models.Model):
-    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True)
+    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='visitnote_set')
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     visit_date = models.DateTimeField(auto_now_add=True)

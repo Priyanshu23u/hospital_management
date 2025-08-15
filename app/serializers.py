@@ -66,19 +66,47 @@ class PatientSerializer(serializers.ModelSerializer):
 # -------------------------
 # APPOINTMENT SERIALIZER
 # -------------------------
+# app/serializers.py
 class AppointmentSerializer(serializers.ModelSerializer):
-    doctor_name = serializers.CharField(source='doctor.profile.user.get_full_name', read_only=True)
-    patient_name = serializers.CharField(source='patient.profile.user.get_full_name', read_only=True)
-    specialization = serializers.CharField(source='doctor.specialization', read_only=True)
+    doctor_name  = serializers.CharField(
+        source='doctor.profile.user.get_full_name', read_only=True)
+    patient_name = serializers.CharField(
+        source='patient.profile.user.get_full_name', read_only=True)
+    specialization = serializers.CharField(
+        source='doctor.specialization', read_only=True)
+
+    # NEW → surface the prescription
+    prescription = serializers.SerializerMethodField()
 
     class Meta:
-        model = Appointment
+        model  = Appointment
         fields = [
             'id', 'patient', 'patient_name',
             'doctor', 'doctor_name', 'specialization',
-            'date', 'slot', 'status', 'created_at'
+            'date', 'slot', 'status', 'created_at',
+            'prescription',                  # ← include it
         ]
         read_only_fields = ['id', 'status', 'created_at']
+
+def get_prescription(self, obj):
+    """
+    Return the prescription text/URL from the related VisitNote.
+    """
+    try:
+        # Get the latest visit note for this appointment
+        latest_note = obj.visitnote_set.order_by('-visit_date').first()
+        if latest_note:
+            if latest_note.prescription:
+                # If it's a file field, return URL
+                if hasattr(latest_note.prescription, 'url'):
+                    return latest_note.prescription.url
+                else:
+                    return str(latest_note.prescription)
+            # Return notes if no prescription file
+            return latest_note.notes if latest_note.notes else None
+        return None
+    except Exception:
+        return None
 
 
 # -------------------------
@@ -98,9 +126,19 @@ class VisitNoteSerializer(serializers.ModelSerializer):
 # DOCUMENT SERIALIZER
 # -------------------------
 class DocumentSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(source='patient.profile.user.get_full_name', read_only=True)
+    patient_name = serializers.CharField(
+        source='patient.profile.user.get_full_name', read_only=True)
+    file_url = serializers.SerializerMethodField()          # NEW
 
     class Meta:
-        model = Document
-        fields = ['id', 'patient', 'patient_name', 'file', 'doc_type', 'uploaded_at']
+        model  = Document
+        fields = ['id', 'patient', 'patient_name',
+                  'file', 'file_url', 'doc_type', 'uploaded_at']
         read_only_fields = ['id', 'uploaded_at']
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        if obj.file and hasattr(obj.file, 'url'):
+            return request.build_absolute_uri(obj.file.url) if request else obj.file.url
+        return None
+
