@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Management - Login</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #56ccf2, #2f80ed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .login-container {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        width: 350px;
+    }
+    h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #2f80ed;
+    }
+    input, button {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+    button {
+        background-color: #2f80ed;
+        color: white;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #1f5bb5;
+    }
+    .error {
+        color: red;
+        font-size: 0.9em;
+        text-align: center;
+    }
+    .signup-link {
+        text-align: center;
+        margin-top: 12px;
+        font-size: 0.9em;
+    }
+    .signup-link a {
+        color: #2f80ed;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .signup-link a:hover {
+        text-decoration: underline;
+    }
+</style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Login</h2>
+    <div class="error" id="errorMsg"></div>
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button onclick="login()">Login</button>
+    <div class="signup-link">
+        Don’t have an account? <a href="signup.html">Sign Up</a>
+    </div>
+</div>
+
+<script>
+async function login() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const errorMsg = document.getElementById("errorMsg");
+    errorMsg.textContent = "";
+
+    if (!username || !password) {
+        errorMsg.textContent = "Both fields are required.";
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/login/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.token) {
+            localStorage.setItem("authToken", data.token);
+            alert("Login successful!");
+            // Redirect based on role if your API returns it
+            if (data.role === "doctor") {
+                window.location.href = "doctor_dashboard.html";
+            } else {
+                window.location.href = "patient_dashboard.html";
+            }
+        } else {
+            errorMsg.textContent = data.detail || "Invalid credentials.";
+        }
+    } catch (error) {
+        errorMsg.textContent = "Error connecting to server.";
+    }
+}
+</script>
+
+</body>
+</html>

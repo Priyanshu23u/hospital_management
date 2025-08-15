@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Doctor Dashboard - Hospital Management</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; background:#f4f6fb; }
+  header { background:#2f80ed;color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center }
+  header h1 { margin:0; font-size:20px; }
+  .container{ padding:20px; max-width:1000px; margin:auto }
+  .card{ background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:18px }
+  table{ width:100%; border-collapse:collapse; font-size:14px }
+  th,td{ border:1px solid #e5e7eb; padding:10px; text-align:left }
+  th{ background:#2f80ed; color:#fff }
+  button.primary{ background:#2f80ed;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer }
+  button.primary:hover { background:#1f5bb5; }
+  input,select,textarea{ width:100%; padding:8px;border:1px solid #d1d5db;border-radius:6px;margin:6px 0; font-size:14px }
+  #aiSummary { background:#f9fafb; border:1px solid #ddd; padding:10px; border-radius:6px; min-height:50px }
+  /* Chatbot styles */
+  #chatbotBtn{position:fixed;bottom:20px;right:20px;background:#2f80ed;color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:24px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:9999}
+  #chatWindow{position:fixed;bottom:90px;right:20px;width:320px;height:440px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;z-index:9999}
+  #chatMessages{flex:1;padding:12px;overflow-y:auto;font-size:14px;background:#fafbff}
+  .msg-user{text-align:right;color:#2f80ed;margin:6px 0;white-space:pre-wrap}
+  .msg-bot{text-align:left;color:#333;margin:6px 0;white-space:pre-wrap}
+  #chatInput{display:flex;border-top:1px solid #e5e7eb}
+  #chatInput input{flex:1;padding:10px;border:none;outline:none}
+  #chatInput button{padding:10px 14px;background:#2f80ed;color:#fff;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Doctor Dashboard</h1>
+  <button class="primary" onclick="logout()">Logout</button>
+</header>
+
+<div class="container">
+  <div class="card">
+    <h2>Today’s Schedule</h2>
+    <table id="todayTable">
+      <thead><tr><th>Time</th><th>Patient</th><th>Reason</th><th>Action</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Upcoming Appointments</h2>
+    <table id="upcomingTable">
+      <thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Action</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Past Appointments</h2>
+    <table id="pastTable">
+      <thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Prescription</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Update Prescription / Notes</h2>
+    <label>Appointment ID</label>
+    <input type="text" id="apptId" placeholder="e.g., 42">
+    <label>Prescription / Notes</label>
+    <textarea id="prescription" rows="4" placeholder="Enter notes..."></textarea>
+    <button class="primary" onclick="savePrescription()">Save</button>
+  </div>
+
+  <div class="card">
+    <h2>AI: Summarize Patient History</h2>
+    <label>Patient ID</label>
+    <input type="text" id="patientId" placeholder="e.g., 15">
+    <button class="primary" onclick="aiSummarize()">Summarize</button>
+    <div id="aiSummary" style="margin-top:10px; white-space:pre-wrap;"></div>
+  </div>
+</div>
+
+<!-- Chatbot UI -->
+<button id="chatbotBtn" title="Chat">💬</button>
+<div id="chatWindow">
+  <div id="chatMessages"></div>
+  <div id="chatInput">
+    <input type="text" id="chatText" placeholder="Ask something...">
+    <button id="chatSend">Send</button>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem("authToken");
+if (!token) {
+  alert("Please login first.");
+  window.location.href = "login.html";
+}
+
+async function loadDoctorDashboard() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/doctor/dashboard/", {
+      headers: { "Authorization": `Token ${token}` }
+    });
+    const data = await res.json();
+
+    const todayT = document.querySelector("#todayTable tbody");
+    const upT = document.querySelector("#upcomingTable tbody");
+    const pastT = document.querySelector("#pastTable tbody");
+    todayT.innerHTML = "";
+    upT.innerHTML = "";
+    pastT.innerHTML = "";
+
+    (data.today || []).forEach(a => {
+      todayT.innerHTML += `<tr>
+        <td>${a.time}</td><td>${a.patient_name}</td><td>${a.reason || ""}</td>
+        <td><button class="primary" onclick="openAppt(${a.id})">Open</button></td>
+      </tr>`;
+    });
+
+    (data.upcoming || []).forEach(a => {
+      upT.innerHTML += `<tr>
+        <td>${a.date}</td><td>${a.time}</td><td>${a.patient_name}</td>
+        <td><button class="primary" onclick="openAppt(${a.id})">Open</button></td>
+      </tr>`;
+    });
+
+    (data.past || []).forEach(a => {
+      pastT.innerHTML += `<tr>
+        <td>${a.date}</td><td>${a.time}</td><td>${a.patient_name}</td><td>${a.prescription || "N/A"}</td>
+      </tr>`;
+    });
+
+  } catch {
+    alert("Failed to load dashboard.");
+  }
+}
+
+function openAppt(id) {
+  document.getElementById("apptId").value = id;
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+}
+
+async function savePrescription() {
+  const id = document.getElementById("apptId").value.trim();
+  const text = document.getElementById("prescription").value.trim();
+  if (!id || !text) return alert("Appointment ID and notes are required.");
+  const res = await fetch(`http://127.0.0.1:8000/api/appointments/${id}/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Token ${token}`
+    },
+    body: JSON.stringify({ prescription: text })
+  });
+  const data = await res.json();
+  if (res.ok) { alert("Saved!"); loadDoctorDashboard(); }
+  else { alert(data.detail || "Failed to save."); }
+}
+
+async function aiSummarize() {
+  const pid = document.getElementById("patientId").value.trim();
+  if (!pid) return alert("Enter Patient ID.");
+  const messages = [
+    { role: "user", content: `Summarize medical history for patient_id=${pid}. Highlight key diagnoses, meds, allergies, abnormal labs, and trends. Keep it concise.` }
+  ];
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/chat/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Token ${token}`
+      },
+      body: JSON.stringify({ messages })
+    });
+    const data = await res.json();
+    if (res.ok && data.reply) {
+      document.getElementById("aiSummary").textContent = data.reply;
+    } else {
+      document.getElementById("aiSummary").textContent = data.detail || "Unable to summarize.";
+    }
+  } catch {
+    document.getElementById("aiSummary").textContent = "Error contacting AI.";
+  }
+}
+
+function logout() {
+  localStorage.removeItem("authToken");
+  window.location.href = "login.html";
+}
+
+// Chatbot
+const chatBtn = document.getElementById("chatbotBtn");
+const chatWin = document.getElementById("chatWindow");
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatText");
+const chatSend = document.getElementById("chatSend");
+let history = [];
+
+chatBtn.addEventListener("click", () => {
+  chatWin.style.display = chatWin.style.display === "none" ? "flex" : "none";
+});
+
+function addMsg(text, sender) {
+  const div = document.createElement("div");
+  div.className = sender === "user" ? "msg-user" : "msg-bot";
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function sendChat() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addMsg(text, "user");
+  history.push({ role: "user", content: text });
+  chatInput.value = "";
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/chat/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Token ${token}`
+      },
+      body: JSON.stringify({ messages: history })
+    });
+    const data = await res.json();
+    if (res.ok && data.reply) {
+      addMsg(data.reply, "bot");
+      history.push({ role: "assistant", content: data.reply });
+    } else {
+      addMsg(data.detail || "Error: Unable to get response.", "bot");
+    }
+  } catch {
+    addMsg("Error: Could not connect to chatbot.", "bot");
+  }
+}
+
+chatSend.addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+
+loadDoctorDashboard();
+</script>
+</body>
+</html>

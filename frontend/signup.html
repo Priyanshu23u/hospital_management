@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Management - Signup</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #56ccf2, #2f80ed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .signup-container {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        width: 350px;
+    }
+    h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #2f80ed;
+    }
+    input, select, button {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+    button {
+        background-color: #2f80ed;
+        color: white;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #1f5bb5;
+    }
+    .error {
+        color: red;
+        font-size: 0.9em;
+        text-align: center;
+    }
+    .login-link {
+        text-align: center;
+        margin-top: 12px;
+        font-size: 0.9em;
+    }
+    .login-link a {
+        color: #2f80ed;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .login-link a:hover {
+        text-decoration: underline;
+    }
+</style>
+</head>
+<body>
+
+<div class="signup-container">
+    <h2>Create Account</h2>
+    <div class="error" id="errorMsg"></div>
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <select id="role">
+        <option value="patient">Patient</option>
+        <option value="doctor">Doctor</option>
+    </select>
+    <button onclick="signup()">Sign Up</button>
+    <div class="login-link">
+        Already have an account? <a href="login.html">Login</a>
+    </div>
+</div>
+
+<script>
+async function signup() {
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const role = document.getElementById("role").value;
+
+    const errorMsg = document.getElementById("errorMsg");
+    errorMsg.textContent = "";
+
+    if (!username || !email || !password) {
+        errorMsg.textContent = "All fields are required.";
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/signup/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, email, password, role })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert("Signup successful! Please login.");
+            window.location.href = "login.html";
+        } else {
+            errorMsg.textContent = data.detail || "Signup failed!";
+        }
+    } catch (error) {
+        errorMsg.textContent = "Error connecting to server.";
+    }
+}
+</script>
+
+</body>
+</html>

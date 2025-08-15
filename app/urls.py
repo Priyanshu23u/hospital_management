@@ -29,4 +29,5 @@ urlpatterns = [
     # AI features
     path("chatbot/", views.ChatbotView.as_view(), name="chatbot"),
     path("summarize-history/", views.HistorySummarizerView.as_view(), name="history-summarizer"),
+    path("chat/", views.chat_with_ai, name="chat_with_ai"),
 ]

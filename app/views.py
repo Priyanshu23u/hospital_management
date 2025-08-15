@@ -11,7 +11,11 @@ from .models import User, Appointment, Document, Doctor, Patient,VisitNote,Profi
 from .serializers import AppointmentSerializer, DoctorSerializer, DocumentSerializer, UserSerializer
 from datetime import datetime, time, timedelta
 from groq import Groq
-from .prompts import PATIENT_SYSTEM, DOCTOR_SYSTEM, HISTORY_SUMMARY_INSTRUCTION
+import os
+from dotenv import load_dotenv
+from rest_framework.decorators import api_view, permission_classes
+load_dotenv()
+
 
 # -----------------------------
 # Permissions
@@ -93,11 +97,19 @@ class DoctorDashboardView(APIView):
     def get(self, request):
         if request.user.profile.role != "doctor":
             return Response({"error": "Only doctors can access this"}, status=403)
+
+        try:
+            doctor_obj = Doctor.objects.get(profile__user=request.user)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor profile not found"}, status=404)
+
         appointments = Appointment.objects.filter(
-            doctor=request.user
+            doctor=doctor_obj
         ).order_by("-date", "-slot")
+
         serializer = AppointmentSerializer(appointments, many=True)
         return Response(serializer.data)
+
 
 
 class PatientDashboardView(APIView):
@@ -106,11 +118,19 @@ class PatientDashboardView(APIView):
     def get(self, request):
         if request.user.profile.role != "patient":
             return Response({"error": "Only patients can access this"}, status=403)
+
+        try:
+            patient_obj = Patient.objects.get(profile__user=request.user)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient profile not found"}, status=404)
+
         appointments = Appointment.objects.filter(
-            patient=request.user
+            patient=patient_obj
         ).order_by("-date", "-slot")
+
         serializer = AppointmentSerializer(appointments, many=True)
         return Response(serializer.data)
+
 
 
 # ---------------------------
@@ -305,56 +325,137 @@ class AppointmentDetailView(APIView):
         appointment.delete()
         return Response(status=204)
 
-
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import get_user_model
+from .prompts import DOCTOR_SYSTEM_PROMPT, PATIENT_SYSTEM_PROMPT,HISTORY_SUMMARY_INSTRUCTION
 # ---------------------------
 # AI (GROQ)
 # ---------------------------
 _client = Groq(api_key=settings.GROQ_API_KEY)
 
 
-def chat_with_groq(messages, model=None, temperature=0.2):
-    model = model or settings.GROQ_MODEL
-    resp = _client.chat.completions.create(
-        model=model, messages=messages, temperature=temperature
-    )
-    return resp.choices[0].message.content
+User = get_user_model()
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def chat_with_ai(request):
+    """
+    Role-aware chatbot for both Doctor and Patient using Groq.
+    Expects: { "messages": [ {role, content}, ... ] }
+    Returns: { "reply": str }
+    """
+    try:
+        messages = request.data.get("messages", [])
+        if not isinstance(messages, list) or not messages:
+            return Response({"detail": "Provide 'messages' as a non-empty list."}, status=400)
+
+        # Detect role
+        user = request.user
+        if Doctor.objects.filter(profile__user=user).exists():
+            system_prompt = DOCTOR_SYSTEM_PROMPT
+        elif Patient.objects.filter(profile__user=user).exists():
+            system_prompt = PATIENT_SYSTEM_PROMPT
+        else:
+            system_prompt = "You are a helpful assistant."
+        # Prepend system prompt
+        full_messages = [{"role": "system", "content": system_prompt}] + messages
+
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        completion = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=full_messages,
+            temperature=0.6,
+            max_tokens=600,
+        )
+
+        # ✅ FIX: Access .content instead of ["content"]
+        reply = completion.choices[0].message.content
+        return Response({"reply": reply})
 
 
+    except Exception as e:
+        return Response({"detail": str(e)}, status=500)
 class ChatbotView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        role = request.data.get("role", "").lower()
-        message = request.data.get("message")
+        message = request.data.get("message", "").strip()
         history = request.data.get("history", [])
-        if role not in ("patient", "doctor") or not message:
-            return Response({"error": "role and message required"}, status=400)
-        system_prompt = PATIENT_SYSTEM if role == "patient" else DOCTOR_SYSTEM
+
+        if not message:
+            return Response({"error": "Message is required"}, status=400)
+
+        # Securely detect role from Profile
+        role = request.user.profile.role.lower()
+        user_obj = None
+
+        if role == "doctor":
+            try:
+                user_obj = Doctor.objects.get(profile__user=request.user)
+            except Doctor.DoesNotExist:
+                return Response({"error": "Doctor profile not found"}, status=404)
+            system_prompt = DOCTOR_SYSTEM_PROMPT
+
+        elif role == "patient":
+            try:
+                user_obj = Patient.objects.get(profile__user=request.user)
+            except Patient.DoesNotExist:
+                return Response({"error": "Patient profile not found"}, status=404)
+            system_prompt = PATIENT_SYSTEM_PROMPT
+
+        else:
+            return Response({"error": "Invalid role"}, status=400)
+
+        # Build AI message list
         messages = [{"role": "system", "content": system_prompt}] + history + [
             {"role": "user", "content": message}
         ]
+
         try:
-            answer = chat_with_groq(messages)
-            return Response({"answer": answer})
+            answer = chat_with_ai(messages)
+            return Response({
+                "role": role,
+                "user": str(user_obj),
+                "message": message,
+                "answer": answer
+            })
         except Exception as e:
             return Response({"error": str(e)}, status=502)
-
 
 class HistorySummarizerView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        # Ensure only doctors can access
         if request.user.profile.role != "doctor":
             return Response({"error": "Only doctors can summarize"}, status=403)
+
+        # Fetch the doctor object safely
+        try:
+            doctor = Doctor.objects.get(profile__user=request.user)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor profile not found"}, status=404)
+
+        # Get raw history text from request
         raw = request.data.get("raw_history", "")
         if not raw.strip():
             return Response({"error": "raw_history required"}, status=400)
+
+        # Prepare messages for AI summarization
         messages = [
-            {"role": "system", "content": DOCTOR_SYSTEM},
-            {"role": "user", "content": f"{HISTORY_SUMMARY_INSTRUCTION}\n\n{raw}"},
+            {"role": "system", "content": DOCTOR_SYSTEM_PROMPT},  # Your base doctor system prompt
+            {
+                "role": "user",
+                "content": f"{HISTORY_SUMMARY_INSTRUCTION}\n\n{raw}"
+            },
         ]
+
+        # Call Groq AI
         try:
-            summary = chat_with_groq(messages, temperature=0.1)
-            return Response({"summary": summary})
+            summary = chat_with_ai(messages, temperature=0.1)
+            return Response({
+                "doctor": str(doctor),  # Include doctor info for context if needed
+                "summary": summary
+            })
         except Exception as e:
             return Response({"error": str(e)}, status=502)
