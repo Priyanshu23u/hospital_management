@@ -10,334 +10,70 @@
         padding: 0;
         box-sizing: border-box;
       }
-
-      /* Enhanced Chatbot Styles Only */
       #chatbotBtn {
         position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        bottom: 20px;
+        right: 20px;
+        background: #2f80ed;
         color: #fff;
         border: none;
         border-radius: 50%;
-        width: 70px;
-        height: 70px;
-        font-size: 28px;
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
         cursor: pointer;
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         z-index: 9999;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
       }
-
-      #chatbotBtn:hover {
-        transform: scale(1.1);
-        box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
-      }
-
       #chatWindow {
         position: fixed;
-        bottom: 110px;
-        right: 30px;
-        width: 380px;
-        height: 500px;
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        bottom: 90px;
+        right: 20px;
+        width: 320px;
+        height: 440px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         display: none;
         flex-direction: column;
         overflow: hidden;
         z-index: 9999;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        animation: slideUp 0.3s ease;
       }
-
-      @keyframes slideUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      #chatWindow::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #667eea, #764ba2);
-        border-radius: 20px 20px 0 0;
-      }
-
-      .chat-header {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 20px;
-        text-align: center;
-        font-weight: 600;
-        font-size: 1.1rem;
-        border-radius: 20px 20px 0 0;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
-
       #chatMessages {
         flex: 1;
-        padding: 20px;
+        padding: 12px;
         overflow-y: auto;
         font-size: 14px;
-        background: linear-gradient(145deg, #fafbff, #f0f4f8);
-        scrollbar-width: thin;
-        scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+        background: #fafbff;
       }
-
-      #chatMessages::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      #chatMessages::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      #chatMessages::-webkit-scrollbar-thumb {
-        background: rgba(102, 126, 234, 0.3);
-        border-radius: 3px;
-      }
-
       .msg-user {
         text-align: right;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 12px 18px;
-        border-radius: 20px 20px 5px 20px;
-        margin: 10px 0;
-        margin-left: 20%;
+        color: #2f80ed;
+        margin: 6px 0;
         white-space: pre-wrap;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        word-wrap: break-word;
-        font-weight: 500;
       }
-
       .msg-bot {
         text-align: left;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
         color: #333;
-        padding: 12px 18px;
-        border-radius: 20px 20px 20px 5px;
-        margin: 10px 0;
-        margin-right: 20%;
+        margin: 6px 0;
         white-space: pre-wrap;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        word-wrap: break-word;
-        position: relative;
       }
-
-      .msg-bot::before {
-        content: '🤖';
-        position: absolute;
-        left: -8px;
-        top: -8px;
-        background: #e8f5e8;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        border: 2px solid white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .msg-user::after {
-        content: '👤';
-        position: absolute;
-        right: -8px;
-        top: -8px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-      }
-
-      .empty-chat-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        text-align: center;
-        color: #666;
-        padding: 40px 20px;
-      }
-
-      .empty-chat-state i {
-        font-size: 3rem;
-        margin-bottom: 20px;
-        color: #667eea;
-        opacity: 0.6;
-      }
-
-      .empty-chat-state h4 {
-        margin-bottom: 10px;
-        font-size: 1.2rem;
-        color: #2c3e50;
-      }
-
-      .empty-chat-state p {
-        font-size: 0.95rem;
-        opacity: 0.8;
-        line-height: 1.4;
-      }
-
       #chatInput {
         display: flex;
-        align-items: center;
-        padding: 20px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-        gap: 12px;
+        border-top: 1px solid #e5e7eb;
       }
-
       #chatInput input {
         flex: 1;
-        padding: 15px 20px;
-        border: 2px solid #e0e6ed;
-        border-radius: 25px;
+        padding: 10px;
+        border: none;
         outline: none;
-        background: #f8f9fa;
-        font-size: 14px;
-        font-family: inherit;
-        transition: all 0.3s ease;
       }
-
-      #chatInput input:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.2);
-        background: white;
-      }
-
-      #chatInput input::placeholder {
-        color: #999;
-      }
-
       #chatInput button {
-        padding: 15px 20px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        padding: 10px 14px;
+        background: #2f80ed;
         color: #fff;
         border: none;
-        border-radius: 25px;
         cursor: pointer;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-      }
-
-      #chatInput button:hover {
-        background: linear-gradient(135deg, #5a67d8, #6b46c1);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-      }
-
-      .typing-indicator {
-        display: none;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        padding: 12px 18px;
-        border-radius: 20px 20px 20px 5px;
-        margin: 10px 0;
-        margin-right: 20%;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        font-style: italic;
-        color: #666;
-        position: relative;
-      }
-
-      .typing-indicator::before {
-        content: '🤖';
-        position: absolute;
-        left: -8px;
-        top: -8px;
-        background: #e8f5e8;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        border: 2px solid white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .typing-dots {
-        display: inline-block;
-        animation: typingAnimation 1.5s infinite;
-      }
-
-      @keyframes typingAnimation {
-        0%, 60%, 100% {
-          opacity: 1;
-        }
-        30% {
-          opacity: 0.3;
-        }
-      }
-
-      /* Mobile responsive for chatbot */
-      @media (max-width: 768px) {
-        #chatbotBtn {
-          bottom: 20px;
-          right: 20px;
-          width: 60px;
-          height: 60px;
-          font-size: 1.5rem;
-        }
-
-        #chatWindow {
-          bottom: 90px;
-          right: 15px;
-          left: 15px;
-          width: auto;
-          height: 450px;
-        }
-
-        .msg-user, .msg-bot {
-          font-size: 13px;
-          padding: 10px 15px;
-        }
-
-        #chatInput {
-          padding: 15px;
-        }
-
-        #chatInput input {
-          padding: 12px 18px;
-          font-size: 13px;
-        }
-
-        #chatInput button {
-          padding: 12px 18px;
-        }
       }
 
       body {
@@ -1112,29 +848,22 @@
       </div>
     </div>
 
-    <!-- Enhanced Chatbot -->
-    <button id="chatbotBtn" title="AI Medical Assistant">💬</button>
+    <!-- Chatbot Toggle Button -->
+    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+      💬
+    </button>
+
+    <!-- Chatbot Modal -->
+    <button id="chatbotBtn" title="Chat">💬</button>
     <div id="chatWindow">
-      <div class="chat-header">
-        🤖 AI Medical Assistant
-      </div>
-      <div id="chatMessages">
-        <div class="empty-chat-state">
-          <div style="font-size: 3rem; margin-bottom: 20px; color: #667eea;">🩺</div>
-          <h4>AI Medical Assistant</h4>
-          <p>Hello Doctor! I'm here to help you with medical queries, patient information, and clinical insights.</p>
-        </div>
-      </div>
+      <div id="chatMessages"></div>
       <div id="chatInput">
         <input
           type="text"
           id="chatText"
-          placeholder="Ask about medical conditions, treatments, diagnoses..."
+          placeholder="Ask health-related questions..."
         />
-        <button id="chatSend">
-          <span>Send</span>
-          <span style="margin-left: 5px;">📨</span>
-        </button>
+        <button id="chatSend">Send</button>
       </div>
     </div>
 
@@ -1584,7 +1313,6 @@
           closeChatbot();
         }
       });
-
       const chatBtn = document.getElementById("chatbotBtn");
       const chatWin = document.getElementById("chatWindow");
       const chatMessages = document.getElementById("chatMessages");
@@ -1595,27 +1323,12 @@
       chatBtn.addEventListener("click", () => {
         chatWin.style.display =
           chatWin.style.display === "none" ? "flex" : "none";
-        
-        // Clear empty state when opening
-        if (chatWin.style.display === "flex") {
-          const emptyState = chatMessages.querySelector(".empty-chat-state");
-          if (emptyState && chatMessages.children.length === 1) {
-            // Keep empty state if no messages yet
-          }
-        }
       });
 
       function addMsg(text, sender) {
-        // Remove empty state when first message is added
-        const emptyState = chatMessages.querySelector(".empty-chat-state");
-        if (emptyState) {
-          emptyState.remove();
-        }
-
         const div = document.createElement("div");
         div.className = sender === "user" ? "msg-user" : "msg-bot";
         div.textContent = text;
-        div.style.position = "relative";
         chatMessages.appendChild(div);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
@@ -1628,16 +1341,8 @@
         history.push({ role: "user", content: text });
         chatInput.value = "";
 
-        // Show typing indicator
-        const typingDiv = document.createElement("div");
-        typingDiv.className = "typing-indicator";
-        typingDiv.innerHTML = 'AI is typing<span class="typing-dots">...</span>';
-        typingDiv.style.display = "block";
-        chatMessages.appendChild(typingDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
         try {
-          const res = await fetch("http://127.0.0.1:8000/api/chat/", {
+          const res = await fetch("https://hospital-management-1-4p47.onrender.com/api/chat/", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1645,9 +1350,6 @@
             },
             body: JSON.stringify({ messages: history }),
           });
-
-          // Remove typing indicator
-          typingDiv.remove();
 
           const data = await res.json();
           if (res.ok && data.reply) {
@@ -1657,8 +1359,6 @@
             addMsg(data.detail || "Error: Unable to get response.", "bot");
           }
         } catch (error) {
-          // Remove typing indicator
-          typingDiv.remove();
           console.error("Chat error:", error);
           addMsg("Error: Could not connect to chatbot.", "bot");
         }
