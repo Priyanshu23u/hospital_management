@@ -8,6 +8,8 @@ This is a Hospital Management System built with **Django** and **Django REST Fra
 
 ---
 
+##  [DEPLOYED LINK](https://hospital-management-eqhx.onrender.com)
+
 ## 🚀 Features
 - **Authentication**: Token-based (DRF Token Authentication)
 - **Patient Management**: Create, view, update, delete patient records

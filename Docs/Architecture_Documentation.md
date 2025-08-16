@@ -1,4 +1,4 @@
-# Hospital Management System
+# 🏥 Hospital Management System
 
 A comprehensive Django-based hospital management system with AI-powered features for managing appointments, patient records, and medical documentation.
 

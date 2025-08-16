@@ -1,4 +1,4 @@
-# 🏥 Hospital Management System (Django + React)
+# 🏥 Hospital Management System (Django + HTMM/CSS/Js)
 
 This project demonstrates a full-stack hospital management application with role-based dashboards, authentication, CRUD operations, pagination/filtering, and deployment on Render.  
 
@@ -117,15 +117,15 @@ Outlined the requirements:
 Common causes and fixes:  
 
 1. **API Base URL mismatch**  
-   - Problem: React fetches `/api/...` but backend runs on `https://hospital-backend.onrender.com/api/`.  
-   - Fix: Use full URL or environment variable in React (`REACT_APP_API_URL`).  
+   - Problem: It fetches `/api/...` but backend runs on `https://hospital-backend.onrender.com/api/`.  
+   - Fix: Use full URL or environment variable for APIs.  
 
 2. **CORS Issue**  
    - Problem: Backend blocks frontend requests from another domain.  
    - Fix: Install `django-cors-headers` and add frontend domain in `CORS_ALLOWED_ORIGINS`.  
 
 3. **Pagination Response Handling**  
-   - Problem: React expects an array, but DRF returns `{count, next, previous, results}`.  
+   - Problem: expects an array, but DRF returns `{count, next, previous, results}`.  
    - Fix: In frontend, use `data.results` instead of `data`.  
 
 4. **Authentication / Permissions**  
